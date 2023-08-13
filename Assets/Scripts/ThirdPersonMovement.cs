@@ -4,6 +4,7 @@ using UnityEngine;
 
 public class ThirdPersonMovement : MonoBehaviour
 {
+    // Player Movement
     public CharacterController controller;
     public Transform cam;
 
@@ -12,7 +13,13 @@ public class ThirdPersonMovement : MonoBehaviour
     public float turnSmoothTime = 0.1f;
     private float _turnSmoothVelocity;
 
-    // Update is called once per frame
+    // Movement animation
+    private Animator animator;
+
+    void Start()
+    {
+        animator = GetComponent<Animator>();
+    }
     void Update()
     {
         float horizontal = Input.GetAxisRaw("Horizontal");
@@ -26,9 +33,13 @@ public class ThirdPersonMovement : MonoBehaviour
             transform.rotation = Quaternion.Euler(0f, angle, 0f);
 
             Vector3 moveDir = Quaternion.Euler(0f, targetAngle, 0f) * Vector3.forward;
-            //ensure the y does not change when moving
-            moveDir.y = 0f;
+            
+            animator.SetBool("IsMoving", true);
             controller.Move(moveDir.normalized * speed * Time.deltaTime);
+        }
+        else
+        {
+            animator.SetBool("IsMoving", false);
         }
     }
 }
