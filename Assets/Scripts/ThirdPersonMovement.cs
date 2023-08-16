@@ -100,6 +100,9 @@ public class ThirdPersonMovement : MonoBehaviour
         // float horizontal = Input.GetAxisRaw("Horizontal");
         // float vertical = Input.GetAxisRaw("Vertical");
         Vector3 direction = new Vector3(_move.x, 0f, _move.y);
+        float inputMagnitude = Mathf.Clamp01(direction.magnitude);
+        _animator.SetFloat("Input Magnitude", inputMagnitude, 0.05f, Time.deltaTime);
+        float speed = inputMagnitude * this.speed;
         direction.Normalize();
         
         // transform.Translate(direction * speed * Time.deltaTime, Space.World);
