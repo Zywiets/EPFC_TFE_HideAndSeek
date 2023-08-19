@@ -22,6 +22,7 @@ public class ThirdPersonMovement : MonoBehaviour
     public float gravity = -9.81f;
     private Vector3 _velocity;
     private bool _isGrounded;
+    private bool _isJumping;
     public float jumpHeight = 3f;
     
     public Transform groundCheck;
@@ -38,15 +39,11 @@ public class ThirdPersonMovement : MonoBehaviour
 
     private void Awake()
     {
+        _animator = GetComponent<Animator>();
         _controls = new PlayerControls();
         _controls.Gameplay.Jump.performed += lambda => HandleJump();
         _controls.Gameplay.Move.performed += lambda => _move =lambda.ReadValue<Vector2>();
         _controls.Gameplay.Move.canceled += lambda => _move = Vector2.zero;
-    }
-
-    void Start()
-    {
-        _animator = GetComponent<Animator>();
     }
     private void Update()
     {
@@ -55,8 +52,8 @@ public class ThirdPersonMovement : MonoBehaviour
         ApplyGravity();
         
         HandleMovement();
-        //
-        // UpdateAnimator();
+        
+        UpdateAnimator();
     }
 
     private void OnEnable()
@@ -72,11 +69,19 @@ public class ThirdPersonMovement : MonoBehaviour
     private void CheckGrounded()
     {
         _isGrounded = Physics.CheckSphere(groundCheck.position, groundDistance, groundMask);
-
         if (_isGrounded && _velocity.y < 0)
         {
-            //IsGrounded might register before we are completely on the ground so it's to force our player to the ground
             _velocity.y = -2f;
+            _animator.SetBool("IsGrounded", true);
+            _isJumping = false;
+        }
+        else
+        {
+            _animator.SetBool("IsGrounded", false);
+            if ((_isJumping && _velocity.y < 0) || _velocity.y < -2)
+            {
+                _animator.SetBool("IsJumping", false);
+            }
         }
     }
 
@@ -91,14 +96,15 @@ public class ThirdPersonMovement : MonoBehaviour
         if (_isGrounded)
         {
             _velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
+            _animator.SetBool("IsJumping", true);
+            _isJumping = true;
+            _isGrounded = false;
+            
         }
     }
 
     private void HandleMovement()
     {
-        
-        // float horizontal = Input.GetAxisRaw("Horizontal");
-        // float vertical = Input.GetAxisRaw("Vertical");
         Vector3 direction = new Vector3(_move.x, 0f, _move.y);
         float inputMagnitude = Mathf.Clamp01(direction.magnitude);
         _animator.SetFloat("Input Magnitude", inputMagnitude, 0.05f, Time.deltaTime);
@@ -141,10 +147,8 @@ public class ThirdPersonMovement : MonoBehaviour
 
     private void UpdateAnimator()
     {
-        bool isMoving = controller.velocity.magnitude > 0.1f;
+        bool isMoving = _move.magnitude > 0.1f;
         _animator.SetBool("IsMoving", isMoving);
-        _animator.SetBool("IsGrounded", _isGrounded);
-        _animator.SetBool("IsJumping", !_isGrounded && _velocity.y > 0);
         _animator.SetBool("IsFalling", !_isGrounded && _velocity.y < 0);
     }
 }
