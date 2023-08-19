@@ -382,7 +382,7 @@ Mesh:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: pb_Mesh24962
+  m_Name: pb_Mesh25708
   serializedVersion: 10
   m_SubMeshes:
   - serializedVersion: 2
@@ -2572,13 +2572,12 @@ MonoBehaviour:
   turnSmoothTime: 0.1
   speed: 6
   gravity: -9.81
-  jumpHeight: 3
+  jumpHeight: 8
   groundCheck: {fileID: 1758256095}
   groundDistance: 0.4
   groundMask:
     serializedVersion: 2
     m_Bits: 8
-  jumpSpeed: 5
 --- !u!4 &1223797568 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 15a211424f8711448bebb0dc7847eb42, type: 3}
@@ -2671,7 +2670,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1239343868}
-  m_LocalRotation: {x: 0.19357069, y: 0.000000008440475, z: -0.0000000016653259, w: 0.9810864}
+  m_LocalRotation: {x: 0.19357069, y: -0.000000008440471, z: 0.0000000016653251, w: 0.9810864}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0

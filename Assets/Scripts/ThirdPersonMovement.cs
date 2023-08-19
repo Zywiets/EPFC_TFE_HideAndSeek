@@ -23,7 +23,8 @@ public class ThirdPersonMovement : MonoBehaviour
     private Vector3 _velocity;
     private bool _isGrounded;
     private bool _isJumping;
-    public float jumpHeight = 3f;
+    public float jumpHeight = 8f;
+    private readonly float _jumpHorizontal = 8f;
     
     public Transform groundCheck;
     public float groundDistance = 0.4f;
@@ -31,12 +32,6 @@ public class ThirdPersonMovement : MonoBehaviour
 
     // Movement animation
     private Animator _animator;
-
-    // Second Try movement
-    public float jumpSpeed = 5f;
-
-    private float _ySpeed;
-
     private void Awake()
     {
         _animator = GetComponent<Animator>();
@@ -52,8 +47,6 @@ public class ThirdPersonMovement : MonoBehaviour
         ApplyGravity();
         
         HandleMovement();
-        
-        UpdateAnimator();
     }
 
     private void OnEnable()
@@ -69,18 +62,23 @@ public class ThirdPersonMovement : MonoBehaviour
     private void CheckGrounded()
     {
         _isGrounded = Physics.CheckSphere(groundCheck.position, groundDistance, groundMask);
-        if (_isGrounded && _velocity.y < 0)
+        if (_isGrounded)
         {
+            if (!(_velocity.y < 0)) return;
             _velocity.y = -2f;
             _animator.SetBool("IsGrounded", true);
             _isJumping = false;
+            _animator.SetBool("IsJumping", false);
+            _animator.SetBool("IsFalling", false);
         }
         else
         {
             _animator.SetBool("IsGrounded", false);
-            if ((_isJumping && _velocity.y < 0) || _velocity.y < -2)
+            if ((_isJumping && _velocity.y > 0) || _velocity.y < -2)
             {
+                _animator.SetBool("IsFalling", true);
                 _animator.SetBool("IsJumping", false);
+                _isJumping = false;
             }
         }
     }
@@ -99,7 +97,6 @@ public class ThirdPersonMovement : MonoBehaviour
             _animator.SetBool("IsJumping", true);
             _isJumping = true;
             _isGrounded = false;
-            
         }
     }
 
@@ -110,45 +107,27 @@ public class ThirdPersonMovement : MonoBehaviour
         _animator.SetFloat("Input Magnitude", inputMagnitude, 0.05f, Time.deltaTime);
         float speed = inputMagnitude * this.speed;
         direction.Normalize();
-        
-        // transform.Translate(direction * speed * Time.deltaTime, Space.World);
-        //
-        // if (direction != Vector3.zero)
-        // {
-        //     Quaternion toRotation = Quaternion.LookRotation(direction, Vector3.up);
-        //
-        //     transform.rotation = Quaternion.RotateTowards(transform.rotation, toRotation, rotationSpeed * Time.deltaTime);
-        // }
-        //
-        // ySpeed += Physics.gravity.y * Time.deltaTime;
-        // if (Input.GetButtonDown("Jump"))
-        // {
-        //     ySpeed = jumpSpeed;
-        // }
-        //
-        // Vector3 velocity = direction * magnitude;
-        // velocity.y = ySpeed;
-        
-        if (direction.magnitude >= 0.1f)
+        if (_isGrounded)
         {
-            _animator.SetBool("IsMoving", true);
-            float targetAngle = Mathf.Atan2(direction.x, direction.z) * Mathf.Rad2Deg + cam.eulerAngles.y;
-            float angle = Mathf.SmoothDampAngle(transform.eulerAngles.y, targetAngle, ref _turnSmoothVelocity, turnSmoothTime);
-            transform.rotation = Quaternion.Euler(0f, angle, 0f);
-        
-            Vector3 moveDir = Quaternion.Euler(0f, targetAngle, 0f) * Vector3.forward;
-            controller.Move(moveDir.normalized * speed * Time.deltaTime);
+            if (direction.magnitude >= 0.1f)
+            {
+                _animator.SetBool("IsMoving", true);
+                float targetAngle = Mathf.Atan2(direction.x, direction.z) * Mathf.Rad2Deg + cam.eulerAngles.y;
+                float angle = Mathf.SmoothDampAngle(transform.eulerAngles.y, targetAngle, ref _turnSmoothVelocity, turnSmoothTime);
+                transform.rotation = Quaternion.Euler(0f, angle, 0f);
+            
+                Vector3 moveDir = Quaternion.Euler(0f, targetAngle, 0f) * Vector3.forward;
+                controller.Move(moveDir.normalized * (speed * Time.deltaTime));
+            }
+            else
+            {
+                _animator.SetBool("IsMoving", false);
+            }
         }
         else
         {
-            _animator.SetBool("IsMoving", false);
+            Vector3 velocity = direction * (inputMagnitude * _jumpHorizontal);
+            controller.Move(velocity * Time.deltaTime);
         }
-    }
-
-    private void UpdateAnimator()
-    {
-        bool isMoving = _move.magnitude > 0.1f;
-        _animator.SetBool("IsMoving", isMoving);
-        _animator.SetBool("IsFalling", !_isGrounded && _velocity.y < 0);
     }
 }
