@@ -112,11 +112,7 @@ public class ThirdPersonMovement : MonoBehaviour
             if (direction.magnitude >= 0.1f)
             {
                 _animator.SetBool("IsMoving", true);
-                float targetAngle = Mathf.Atan2(direction.x, direction.z) * Mathf.Rad2Deg + cam.eulerAngles.y;
-                float angle = Mathf.SmoothDampAngle(transform.eulerAngles.y, targetAngle, ref _turnSmoothVelocity, turnSmoothTime);
-                transform.rotation = Quaternion.Euler(0f, angle, 0f);
-            
-                Vector3 moveDir = Quaternion.Euler(0f, targetAngle, 0f) * Vector3.forward;
+                Vector3 moveDir = GetMoveDirection(direction);
                 controller.Move(moveDir.normalized * (speed * Time.deltaTime));
             }
             else
@@ -126,8 +122,16 @@ public class ThirdPersonMovement : MonoBehaviour
         }
         else
         {
-            Vector3 velocity = direction * (inputMagnitude * _jumpHorizontal);
+            Vector3 velocity =  GetMoveDirection(direction) * (inputMagnitude * _jumpHorizontal);
             controller.Move(velocity * Time.deltaTime);
         }
+    }
+
+    private Vector3 GetMoveDirection(Vector3 direction)
+    {
+        float targetAngle = Mathf.Atan2(direction.x, direction.z) * Mathf.Rad2Deg + cam.eulerAngles.y;
+        float angle = Mathf.SmoothDampAngle(transform.eulerAngles.y, targetAngle, ref _turnSmoothVelocity, turnSmoothTime);
+        transform.rotation = Quaternion.Euler(0f, angle, 0f);
+        return Quaternion.Euler(0f, targetAngle, 0f) * Vector3.forward;
     }
 }
