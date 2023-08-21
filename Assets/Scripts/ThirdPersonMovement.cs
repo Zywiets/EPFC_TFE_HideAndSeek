@@ -7,38 +7,52 @@ using UnityEngine.InputSystem;
 
 public class ThirdPersonMovement : MonoBehaviour
 {
-    // Player Movement
+    [Header("Player Movement")]
     public CharacterController controller;
     public Transform cam;
     public float turnSmoothTime = 0.1f;
     private float _turnSmoothVelocity;
 
-    // PLayer controls
+    [Header("Player Controls")]
     private PlayerControls _controls;
     private Vector2 _move;
     public float speed = 6f;
-    // Gravity Logic
     
+    [Header("Gravity Logic")]
     public float gravity = -9.81f;
     private Vector3 _velocity;
     private bool _isGrounded;
     private bool _isJumping;
     public float jumpHeight = 8f;
-    private readonly float _jumpHorizontal = 8f;
-    
+    private const float JumpHorizontal = 8f;
+
+    [Header("Ground Check")]
     public Transform groundCheck;
     public float groundDistance = 0.4f;
     public LayerMask groundMask;
 
-    // Movement animation
+    [Header("Movement animations")]
     private Animator _animator;
     private void Awake()
     {
         _animator = GetComponent<Animator>();
+        InitializeControls();
+    }
+    private void InitializeControls()
+    {
         _controls = new PlayerControls();
-        _controls.Gameplay.Jump.performed += lambda => HandleJump();
-        _controls.Gameplay.Move.performed += lambda => _move =lambda.ReadValue<Vector2>();
-        _controls.Gameplay.Move.canceled += lambda => _move = Vector2.zero;
+        _controls.Gameplay.Jump.performed += _ => HandleJump();
+        _controls.Gameplay.Move.performed += ctx => _move = ctx.ReadValue<Vector2>();
+        _controls.Gameplay.Move.canceled += _ => _move = Vector2.zero;
+    }
+    private void OnEnable()
+    {
+        _controls.Gameplay.Enable();
+    }
+
+    private void OnDisable()
+    {
+        _controls.Gameplay.Disable();
     }
     private void Update()
     {
@@ -49,38 +63,38 @@ public class ThirdPersonMovement : MonoBehaviour
         HandleMovement();
     }
 
-    private void OnEnable()
-    {
-        _controls.Gameplay.Enable();
-    }
-
-    private void OnDisable()
-    {
-        _controls.Gameplay.Disable();
-    }
-
     private void CheckGrounded()
     {
         _isGrounded = Physics.CheckSphere(groundCheck.position, groundDistance, groundMask);
         if (_isGrounded)
         {
             if (!(_velocity.y < 0)) return;
-            _velocity.y = -2f;
-            _animator.SetBool("IsGrounded", true);
-            _isJumping = false;
-            _animator.SetBool("IsJumping", false);
-            _animator.SetBool("IsFalling", false);
+            SetGroundState();
         }
         else
         {
             _animator.SetBool("IsGrounded", false);
             if ((_isJumping && _velocity.y > 0) || _velocity.y < -2)
             {
-                _animator.SetBool("IsFalling", true);
-                _animator.SetBool("IsJumping", false);
-                _isJumping = false;
+                SetFallingState();
             }
         }
+    }
+
+    private void SetGroundState()
+    {
+        _velocity.y = -2f;
+        _animator.SetBool("IsGrounded", _isGrounded);
+        _animator.SetBool("IsJumping", false);
+        _animator.SetBool("IsFalling", false);
+        _isJumping = false;
+    }
+
+    private void SetFallingState()
+    {
+        _animator.SetBool("IsFalling", true);
+        _animator.SetBool("IsJumping", false);
+        _isJumping = false;
     }
 
     private void ApplyGravity()
@@ -105,15 +119,15 @@ public class ThirdPersonMovement : MonoBehaviour
         Vector3 direction = new Vector3(_move.x, 0f, _move.y);
         float inputMagnitude = Mathf.Clamp01(direction.magnitude);
         _animator.SetFloat("Input Magnitude", inputMagnitude, 0.05f, Time.deltaTime);
-        float speed = inputMagnitude * this.speed;
+        float speedInputed = inputMagnitude * speed;
         direction.Normalize();
         if (_isGrounded)
         {
-            if (direction.magnitude >= 0.1f)
+            if (inputMagnitude >= 0.1f)
             {
                 _animator.SetBool("IsMoving", true);
                 Vector3 moveDir = GetMoveDirection(direction);
-                controller.Move(moveDir.normalized * (speed * Time.deltaTime));
+                controller.Move(moveDir.normalized * (speedInputed * Time.deltaTime));
             }
             else
             {
@@ -122,11 +136,12 @@ public class ThirdPersonMovement : MonoBehaviour
         }
         else
         {
-            Vector3 velocity =  GetMoveDirection(direction) * (inputMagnitude * _jumpHorizontal);
+            Vector3 velocity =  GetMoveDirection(direction) * (inputMagnitude * JumpHorizontal);
             controller.Move(velocity * Time.deltaTime);
         }
     }
 
+    // Calculates the direction the controller is pointing instead of the opposite (responding like an aeroplane if not)
     private Vector3 GetMoveDirection(Vector3 direction)
     {
         float targetAngle = Mathf.Atan2(direction.x, direction.z) * Mathf.Rad2Deg + cam.eulerAngles.y;
