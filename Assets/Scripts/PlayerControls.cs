@@ -60,7 +60,7 @@ public partial class @PlayerControls : IInputActionCollection2, IDisposable
                     ""id"": ""343aff61-58aa-4ff7-8e39-1d7ca5ebac34"",
                     ""expectedControlType"": ""Button"",
                     ""processors"": """",
-                    ""interactions"": """",
+                    ""interactions"": ""Hold(pressPoint=0.1)"",
                     ""initialStateCheck"": false
                 }
             ],
@@ -101,7 +101,7 @@ public partial class @PlayerControls : IInputActionCollection2, IDisposable
                 {
                     ""name"": """",
                     ""id"": ""fdf3e491-6f27-49fb-8404-758bd53527af"",
-                    ""path"": """",
+                    ""path"": ""<Gamepad>/leftTrigger"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": """",

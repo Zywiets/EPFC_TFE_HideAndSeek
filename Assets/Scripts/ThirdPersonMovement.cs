@@ -12,6 +12,11 @@ public class ThirdPersonMovement : MonoBehaviour
     public Transform cam;
     public float turnSmoothTime = 0.1f;
     private float _turnSmoothVelocity;
+    private bool _isGrounded;
+    private bool _isJumping;
+    private bool _isCrouching;
+    public float jumpHeight = 8f;
+    private const float JumpHorizontal = 8f;
 
     [Header("Player Controls")]
     private PlayerControls _controls;
@@ -21,10 +26,6 @@ public class ThirdPersonMovement : MonoBehaviour
     [Header("Gravity Logic")]
     public float gravity = -9.81f;
     private Vector3 _velocity;
-    private bool _isGrounded;
-    private bool _isJumping;
-    public float jumpHeight = 8f;
-    private const float JumpHorizontal = 8f;
 
     [Header("Ground Check")]
     public Transform groundCheck;
@@ -44,6 +45,8 @@ public class ThirdPersonMovement : MonoBehaviour
         _controls.Gameplay.Jump.performed += _ => HandleJump();
         _controls.Gameplay.Move.performed += ctx => _move = ctx.ReadValue<Vector2>();
         _controls.Gameplay.Move.canceled += _ => _move = Vector2.zero;
+        _controls.Gameplay.Crouch.started += _ => HandleStartCrouch();
+        _controls.Gameplay.Crouch.canceled += _ => HandleEndCrouch();
     }
     private void OnEnable()
     {
@@ -105,13 +108,28 @@ public class ThirdPersonMovement : MonoBehaviour
 
     private void HandleJump()
     {
-        if (_isGrounded)
-        {
-            _velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
-            _animator.SetBool("IsJumping", true);
-            _isJumping = true;
-            _isGrounded = false;
-        }
+        if (!_isGrounded) return;
+        
+        _velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
+        _animator.SetBool("IsJumping", true);
+        _isJumping = true;
+        _isGrounded = false;
+    }
+
+    private void HandleStartCrouch()
+    {
+        if (!_isGrounded) return;
+
+        _isCrouching = true;
+        _animator.SetBool("IsCrouching", _isCrouching);
+
+    }
+    private void HandleEndCrouch()
+    {
+        if (!_isGrounded) return;
+        _isCrouching = false;
+        _animator.SetBool("IsCrouching", _isCrouching);
+        
     }
 
     private void HandleMovement()
