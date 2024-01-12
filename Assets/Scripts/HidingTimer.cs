@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using TMPro;
@@ -11,8 +12,19 @@ public class HidingTimer : MonoBehaviour
     private float _startTime;
     private bool _isNotTouched;
 
+    // private void OnEnable()
+    // {
+    //     HiderCollision.Instance.touchedEvent.AddListener(StopTimer);
+    // }
+
+    private void OnDisable()
+    {
+        HiderCollision.Instance.touchedEvent.RemoveListener(StopTimer);
+    }
+
     void Start()
     {
+        HiderCollision.Instance.touchedEvent.AddListener(StopTimer);
         StartTimer();
     }
     
@@ -23,6 +35,11 @@ public class HidingTimer : MonoBehaviour
             float elapsedTime = Time.time - _startTime;
             UpdateTimerDisplay(elapsedTime);
         }
+    }
+    
+    public void IsTouched()
+    {
+        _isNotTouched = false;
     }
 
     public void StartTimer()
