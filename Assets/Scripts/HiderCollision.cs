@@ -26,9 +26,8 @@ public class HiderCollision : MonoBehaviour
     }
     private void OnTriggerEnter(Collider other)
     {
-        Debug.Log("On est touché");
         if (!other.gameObject.CompareTag(SeekerName)) return;
-        Debug.Log("On Passe le if statemtn");
+        Debug.Log("We are touched");
         touchedEvent.Invoke();
     }
     
