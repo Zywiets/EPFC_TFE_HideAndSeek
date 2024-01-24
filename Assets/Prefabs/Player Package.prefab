@@ -1,5 +1,52 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!1 &60134297250692854
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6661904312946840283}
+  - component: {fileID: 8050682145407724933}
+  m_Layer: 0
+  m_Name: Player Manager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &6661904312946840283
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 60134297250692854}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5381044245155951504}
+  m_RootOrder: 4
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &8050682145407724933
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 60134297250692854}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5a5056c142559e4c906250f320fd9a4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  hiderAvatar: {fileID: 5074473670644499314}
+  seekerAvatar: {fileID: 5381044245335691273}
+  thirdPersonCamera: {fileID: 5381044245135035713}
 --- !u!1 &5074473670644499314
 GameObject:
   m_ObjectHideFlags: 0
@@ -91,7 +138,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   controller: {fileID: 5074473670644499319}
-  cam: {fileID: 0}
+  cam: {fileID: 5381044246081838904}
   turnSmoothTime: 0.1
   jumpHeight: 8
   speed: 6
@@ -1877,7 +1924,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5381044245106700613}
-  m_LocalRotation: {x: 0.1756932, y: -0.000000018938081, z: 0.000000003379866, w: 0.984445}
+  m_LocalRotation: {x: 0.17569318, y: 0.000000018938078, z: -0.0000000033798655, w: 0.984445}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -2293,6 +2340,7 @@ Transform:
   - {fileID: 5559683047305435592}
   - {fileID: 5381044245335691282}
   - {fileID: 5381044245135035715}
+  - {fileID: 6661904312946840283}
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -2957,7 +3005,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5381044245335691273}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0.856112, y: -4.127431, z: -3.7188022}
+  m_LocalPosition: {x: -5.4828877, y: -4.127431, z: -3.7290251}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -3019,7 +3067,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   controller: {fileID: 5381044245335691280}
-  cam: {fileID: 0}
+  cam: {fileID: 5381044246081838904}
   turnSmoothTime: 0.1
   jumpHeight: 8
   speed: 6
@@ -3611,7 +3659,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5381044245556092828}
-  m_LocalRotation: {x: 0.19357069, y: 0.000000008440475, z: -0.0000000016653259, w: 0.9810864}
+  m_LocalRotation: {x: 0.19357069, y: -0.000000008440553, z: 0.0000000016653414, w: 0.9810864}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -5568,7 +5616,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5381044246081838903}
-  m_LocalRotation: {x: 0.1756932, y: -0.000000037876163, z: 0.0000000067597314, w: 0.984445}
+  m_LocalRotation: {x: 0.17569318, y: 0.00000003787616, z: -0.00000000675973, w: 0.984445}
   m_LocalPosition: {x: -5.4828877, y: 2.852569, z: -20.729025}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0

@@ -30,11 +30,9 @@ public class HidingTimer : MonoBehaviour
     
     void Update()
     {
-        if (_isNotTouched)
-        {
-            float elapsedTime = Time.time - _startTime;
-            UpdateTimerDisplay(elapsedTime);
-        }
+        if (!_isNotTouched) return;
+        var elapsedTime = Time.time - _startTime;
+        UpdateTimerDisplay(elapsedTime);
     }
     
     public void IsTouched()
@@ -42,14 +40,14 @@ public class HidingTimer : MonoBehaviour
         _isNotTouched = false;
     }
 
-    public void StartTimer()
+    private void StartTimer()
     {
         _startTime = Time.time;
         _isNotTouched = true;
     }
 
     // Stop the timer
-    public void StopTimer()
+    private void StopTimer()
     {
         _isNotTouched = false;
     }
