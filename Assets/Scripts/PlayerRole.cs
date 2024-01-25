@@ -24,16 +24,21 @@ public class PlayerRole : MonoBehaviour
     private void ChangeToHider()
     {
         hiderAvatar.SetActive(false);
+        var impactPosition = hiderAvatar.transform.position;
+        Debug.Log("La position du hider est " + impactPosition);
+        SetSeekerTargetFollow(impactPosition);
         seekerAvatar.SetActive(true);
-        SetFollowTarget(seekerAvatar);
         
     }
 
-    private void SetFollowTarget(GameObject avatar)
+    private void SetSeekerTargetFollow(Vector3 impPos)
     {
-        Debug.Log("We could be Zombies");
-        _tFollowTarget = avatar.transform;
+        Debug.Log("SetSeekerTargetFollow called with position: " + impPos);
+        _tFollowTarget = seekerAvatar.transform;
         _pCam.Follow = _tFollowTarget;
         _pCam.LookAt = _tFollowTarget;
+        seekerAvatar.transform.position = impPos;
+        var v = seekerAvatar.transform.position;
+        Debug.Log("seekerAvatar position set to: " + v);
     }
 }
