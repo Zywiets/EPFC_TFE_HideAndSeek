@@ -1,11 +1,11 @@
-var app = require('express')();
-var server = require('http').createServer(app);
-var io = require('socket.io')(server);
+let app = require('express')();
+let server = require('http').createServer(app);
+let io = require('socket.io')(server);
 
 server.listen(3000);
 
-var playerSpawnPoints = [];
-var clients = [];
+let playerSpawnPoints = [];
+let clients = [];
 
 
 app.get('/', function(req, res){
@@ -16,16 +16,16 @@ io.on('connection',
     function (socket) {
 
         console.log("new connection socket" + socket.id);
-        var currentPlayer = {};
+        let currentPlayer = {};
         currentPlayer.name = 'unknown';
 
         socket.on('player connect', () => {
             console.log(currentPlayer.name + ' received. player connected');
-            for (var i = 0; clients.length > i; i++) {
-                var playerConnected = {
+            for (let i = 0; clients.length > i; i++) {
+                let playerConnected = {
                     name: clients[i].name,
                     position: clients[i].position,
-                    rotation: clients[i].rotationAngle
+                    rotation: clients[i].rotation
                 };
                 //receive info about other players
                 socket.emit('other player connected', playerConnected);
@@ -36,9 +36,10 @@ io.on('connection',
 
         socket.on('play', data => {
             console.log(currentPlayer.name + ' received: play: ' + JSON.stringify(data));
+            playerSpawnPoints = [];
             if (0 === clients.length) {
                 data.playerSpawnPoints.forEach(function (_playerSpawnPoint) {
-                    var playerSpawnPoint = {
+                    let playerSpawnPoint = {
                         position: _playerSpawnPoint.position,
                         rotation: _playerSpawnPoint.rotation
                     };
@@ -46,11 +47,10 @@ io.on('connection',
                 });
             }
             console.log(currentPlayer.name + ' play: ' + JSON.stringify(currentPlayer));
-            var randomSpawnPoint = playerSpawnPoints[Math.floor(Math.random() * playerSpawnPoints.length)];
+            let randomSpawnPoint = playerSpawnPoints[Math.floor(Math.random() * playerSpawnPoints.length)];
             currentPlayer = {
                 name: data.name,
-                position: randomSpawnPoint.position,
-                rotation: randomSpawnPoint.rotation
+                position: randomSpawnPoint.position
             };
             clients.push(currentPlayer);
             // in your current game, tells you that you have joined
