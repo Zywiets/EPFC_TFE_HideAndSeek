@@ -40,7 +40,7 @@ public class ThirdPersonMovement : MonoBehaviour
     private Vector3 _currPosition;
     private Quaternion _oldRotation;
     private Quaternion _currRotation;
-    public bool isLocalPlayer = true; //TODO switch back after networking done
+    public bool isLocalPlayer = false;
     private void Awake()
     {
         _animator = GetComponent<Animator>();

@@ -40,4 +40,13 @@ public class PlayerRole : MonoBehaviour
         var v = seekerAvatar.transform.position;
         Debug.Log("seekerAvatar position set to: " + v);
     }
+    
+    public void ChangeLocalPlayerStatus()
+    {
+        ThirdPersonMovement thirdHider = hiderAvatar.GetComponent<ThirdPersonMovement>();
+        ThirdPersonMovement thirdSeeker = seekerAvatar.GetComponent<ThirdPersonMovement>();
+
+        thirdHider.isLocalPlayer = !thirdHider.isLocalPlayer;
+        thirdSeeker.isLocalPlayer = !thirdSeeker.isLocalPlayer;
+    }
 }

@@ -1,51 +1,147 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using Firesplash.UnityAssets.SocketIO;
+using TMPro;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.UI;
 
 public class NetworkManager : MonoBehaviour
 {
-    public static NetworkManager instance;
+    public static NetworkManager Instance;
     public Canvas canvas;
-    //public SocketIOComponent socket;
-    public InputField playerNameInput;
+    private SocketIOCommunicator _sioCom;
+    public string playerNameInput;
     public GameObject player;
+    public List<GameObject> playerSpawnPoints;
 
-    private void Awake()
-    {
-        if (instance == null)
-        {
-            instance = this;
-        } else if (instance != this)
-        {
-            Destroy(gameObject);
-        }
-        DontDestroyOnLoad(gameObject);
-    }
+    // private void Awake()
+    // {
+    //     if (Instance == null)
+    //     {
+    //         Instance = this;
+    //     } else if (Instance != this)
+    //     {
+    //         Destroy(gameObject);
+    //     }
+    //     DontDestroyOnLoad(gameObject);
+    // }
 
     private void Start()
     {
-        //TODO subscription
+        DontDestroyOnLoad(gameObject);
+        _sioCom = GetComponent<SocketIOCommunicator>();
+        // subscribe to all the various websocket events  
+        _sioCom.Instance.On("connect", (payload) =>
+        {
+            Debug.Log(payload+"     ***** LOCAL: Connected "+ _sioCom.Instance.SocketID+"  *****");
+        });
+        _sioCom.Instance.On("play", OnPlay);
+        _sioCom.Instance.On("other player connected", OnOtherPlayerConnected);
+        // _sioCom.Instance.On("player move", On);
+        _sioCom.Instance.Connect();
     }
 
     public void JoinGame()
     {
+        Debug.Log("+++++++++ Le bouton join game fonctionne ++++++++");
         StartCoroutine(ConnectToServer());
     }
 
     #region Commands
-    IEnumerator ConnectToServer()
+
+    private IEnumerator ConnectToServer()
     {
+        
         yield return new WaitForSeconds(0.5f);
+        
+        _sioCom.Instance.Emit("player connect");
+        
+        yield return new WaitForSeconds(1f);
+
+        string playerName = playerNameInput;
+        //List<SpawnPoint> playerSpawnPoints = GetComponent<PlayerSpawner>().playerSpawnPoints;
+        PlayerJSON playerJson = new PlayerJSON(playerName, playerSpawnPoints);
+        string data = JsonUtility.ToJson(playerJson);
+        Debug.Log(data + " Est envoyé au server ---------");
+        _sioCom.Instance.Emit("play", data, false);
+        canvas.gameObject.SetActive(false);
+    }
+
+    public void ReadInputName(string inpName)
+    {
+        playerNameInput = inpName;
     }
     
     #endregion
 
     #region Listening
 
-    
+    void OnOtherPlayerConnected(string data)
+    {
+        print("someone joined");
+        UserJSON userJSON = UserJSON.CreateFromJSON(data);
+        Vector3 position = new Vector3(userJSON.position[0], userJSON.position[1], userJSON.position[2]);
+        Quaternion rotation = Quaternion.Euler(userJSON.rotation[0], userJSON.rotation[1], userJSON.rotation[2]);
+        GameObject o = GameObject.Find(userJSON.name) as GameObject;
+        if(o != null){return;}
+
+        GameObject p = Instantiate(player, position, rotation);
+    }
+
+    void OnOtherPlayerDisconnected(string data)
+    {
+        UserJSON uSerJson = UserJSON.CreateFromJSON(data);
+        Destroy(GameObject.Find(uSerJson.name));
+    }
+
+    void OnPlay(string data)
+    {
+        Debug.Log("++++you joined play function ++++");
+        UserJSON currentUser = UserJSON.CreateFromJSON(data);
+        Vector3 position = new Vector3(currentUser.position[0], currentUser.position[1], currentUser.position[2]);
+        Quaternion rotation = Quaternion.Euler(currentUser.rotation[0], currentUser.rotation[1], currentUser.rotation[2]);
+
+        GameObject p = Instantiate(player, position, rotation);
+        PlayerRole roleManag = p.GetComponent<PlayerRole>();
+        roleManag.ChangeLocalPlayerStatus();
+    }
+
+    void OnPlayerMove(string data)
+    {
+        Debug.Log("+++++++ OnplayerMove +++");
+        UserJSON userJson = UserJSON.CreateFromJSON(data);
+        Vector3 position = new Vector3(userJson.position[0], userJson.position[1], userJson.position[2]);
+        if (userJson.name.Equals(playerNameInput))
+        {
+            return;
+        }
+
+        GameObject p = GameObject.Find(userJson.name);
+        if (p != null)
+        {
+            p.transform.position = position;
+        }
+
+    }
+
+    void OnPlayerTurn(string data)
+    {
+        Debug.Log("------On player turn------");
+        UserJSON userJson = UserJSON.CreateFromJSON(data);
+        Quaternion rotation = Quaternion.Euler(userJson.rotation[0], userJson.rotation[1], userJson.rotation[2]);
+        if (userJson.name.Equals(playerNameInput))
+        {
+            return;
+        }
+        GameObject p = GameObject.Find(userJson.name);
+        if (p != null)
+        {
+            p.transform.rotation = rotation;
+        }
+
+    }
 
     #endregion
 
@@ -57,11 +153,11 @@ public class NetworkManager : MonoBehaviour
         public string name;
         public List<PointJSON> playerSpawnPoints;
 
-        public PlayerJSON(string _name, List<SpawnPoint> _playerSpawnPoints)
+        public PlayerJSON(string _name, List<GameObject> _playerSpawnPoints)
         {
             playerSpawnPoints = new List<PointJSON>();
             name = _name;
-            foreach (SpawnPoint playerSpawnPoint in _playerSpawnPoints)
+            foreach (GameObject playerSpawnPoint in _playerSpawnPoints)
             {
                 PointJSON pointJSON = new PointJSON(playerSpawnPoint);
                 playerSpawnPoints.Add(pointJSON);
@@ -74,7 +170,7 @@ public class NetworkManager : MonoBehaviour
     {
         public float[] position;
         public float[] rotation;
-        public PointJSON(SpawnPoint spawnPoint)
+        public PointJSON(GameObject spawnPoint)
         {
             var transform1 = spawnPoint.transform;
             var position1 = transform1.position;
