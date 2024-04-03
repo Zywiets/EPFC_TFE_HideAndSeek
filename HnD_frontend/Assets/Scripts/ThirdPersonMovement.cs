@@ -36,6 +36,7 @@ public class ThirdPersonMovement : MonoBehaviour
     private Animator _animator;
 
     [Header("Network")] 
+    private NetworkManager _networkManager;
     private Vector3 _oldPosition;
     private Vector3 _currPosition;
     private Quaternion _oldRotation;
@@ -67,6 +68,12 @@ public class ThirdPersonMovement : MonoBehaviour
 
     private void Start()
     {
+        GameObject networkManagerObject = GameObject.Find("Network Manager");
+        if (networkManagerObject != null)
+        {
+            _networkManager = networkManagerObject.GetComponent<NetworkManager>();
+            if(_networkManager == null){ Debug.Log("Le _networkManger est null ");}
+        }
         var transform1 = transform;
         _oldPosition = transform1.position;
         _currPosition = _oldPosition;
@@ -173,7 +180,8 @@ public class ThirdPersonMovement : MonoBehaviour
         _animator.SetFloat("Input Magnitude", inputMagnitude, 0.05f, Time.deltaTime);
         float speedInputed = inputMagnitude * speed;
         direction.Normalize();
-        if (_isGrounded)
+        // if (_isGrounded)
+        if (true)
         {
             if (inputMagnitude >= 0.1f)
             {
@@ -192,6 +200,36 @@ public class ThirdPersonMovement : MonoBehaviour
             Vector3 velocity =  GetMoveDirection(direction) * (inputMagnitude * JumpHorizontal);
             controller.Move(velocity * Time.deltaTime);
             ChangeCurrentValuePosRot();
+        }
+        _networkManager.CommandMove(_move);
+    }
+
+    public void HandleOtherPlayerMovement(Vector2 move, string playerName)
+    {
+        Debug.Log("++++++++++++ "+playerName +" received movement parameters : " + move );
+        _move = new Vector2(move.x, move.y);
+        Vector3 direction = new Vector3(_move.x, 0f, _move.y);
+        float inputMagnitude = Mathf.Clamp01(direction.magnitude);
+        _animator.SetFloat("Input Magnitude", inputMagnitude, 0.05f, Time.deltaTime);
+        float speedInputed = inputMagnitude * speed;
+        direction.Normalize();
+        if (_isGrounded)
+        {
+            if (inputMagnitude >= 0.1f)
+            {
+                _animator.SetBool("IsMoving", true);
+                Vector3 moveDir = GetMoveDirection(direction);
+                controller.Move(moveDir.normalized * (speedInputed * Time.deltaTime));
+            }
+            else
+            {
+                _animator.SetBool("IsMoving", false);
+            }
+        }
+        else
+        {
+            Vector3 velocity =  GetMoveDirection(direction) * (inputMagnitude * JumpHorizontal);
+            controller.Move(velocity * Time.deltaTime);
         }
     }
 

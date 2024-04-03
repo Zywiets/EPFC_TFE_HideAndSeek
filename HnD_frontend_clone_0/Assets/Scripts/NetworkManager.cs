@@ -10,7 +10,7 @@ using UnityEngine.UI;
 
 public class NetworkManager : MonoBehaviour
 {
-    public static NetworkManager Instance;
+    public static NetworkManager instance;
     public Canvas canvas;
     private SocketIOCommunicator _sioCom;
     public string playerNameInput;
@@ -34,13 +34,10 @@ public class NetworkManager : MonoBehaviour
         DontDestroyOnLoad(gameObject);
         _sioCom = GetComponent<SocketIOCommunicator>();
         // subscribe to all the various websocket events  
-        _sioCom.Instance.On("connect", (payload) =>
-        {
-            Debug.Log(payload+"     ***** LOCAL: Connected "+ _sioCom.Instance.SocketID+"  *****");
-        });
+        _sioCom.Instance.On("connect", (payload) => { Debug.Log(payload+"     ***** LOCAL: Connected "+ _sioCom.Instance.SocketID+"  *****"); });
         _sioCom.Instance.On("play", OnPlay);
         _sioCom.Instance.On("other player connected", OnOtherPlayerConnected);
-        // _sioCom.Instance.On("player move", On);
+        _sioCom.Instance.On("player move", OnPlayerMove);
         _sioCom.Instance.Connect();
     }
 
@@ -63,11 +60,18 @@ public class NetworkManager : MonoBehaviour
 
         string playerName = playerNameInput;
         //List<SpawnPoint> playerSpawnPoints = GetComponent<PlayerSpawner>().playerSpawnPoints;
-        PlayerJSON playerJson = new PlayerJSON(playerName, playerSpawnPoints);
+        PlayerJson playerJson = new PlayerJson(playerName, playerSpawnPoints);
         string data = JsonUtility.ToJson(playerJson);
         Debug.Log(data + " Est envoyé au server ---------");
         _sioCom.Instance.Emit("play", data, false);
         canvas.gameObject.SetActive(false);
+    }
+    
+    public void CommandMove(Vector2 vec2)
+    {
+        string data = JsonUtility.ToJson(new MovementJson(vec2));
+        _sioCom.Instance.Emit("player move", data, false);
+        // socket.Emit("player move", new JSONObject(data));
     }
 
     public void ReadInputName(string inpName)
@@ -82,9 +86,10 @@ public class NetworkManager : MonoBehaviour
     void OnPlay(string data)
     {
         Debug.Log("++++you joined play function ++++");
-        UserJSON currentUser = UserJSON.CreateFromJSON(data);
+        UserJson currentUser = UserJson.CreateFromJSON(data);
         Vector3 position = new Vector3(currentUser.position[0], currentUser.position[1], currentUser.position[2]);
-        Quaternion rotation = Quaternion.Euler(currentUser.rotation[0], currentUser.rotation[1], currentUser.rotation[2]);
+        // Quaternion rotation = Quaternion.Euler(currentUser.rotation[0], currentUser.rotation[1], currentUser.rotation[2]);
+        Quaternion rotation = Quaternion.Euler(0,0,0);
 
         GameObject p = Instantiate(player, position, rotation);
         p.name = currentUser.name;
@@ -96,7 +101,7 @@ public class NetworkManager : MonoBehaviour
     void OnOtherPlayerConnected(string data)
     {
         print("someone joined");
-        UserJSON userJSON = UserJSON.CreateFromJSON(data);
+        UserJson userJSON = UserJson.CreateFromJSON(data);
         
         Vector3 position = new Vector3(userJSON.position[0], userJSON.position[1], userJSON.position[2]);
         Quaternion rotation = Quaternion.Euler(0,0,0);
@@ -114,7 +119,7 @@ public class NetworkManager : MonoBehaviour
 
     void OnOtherPlayerDisconnected(string data)
     {
-        UserJSON uSerJson = UserJSON.CreateFromJSON(data);
+        UserJson uSerJson = UserJson.CreateFromJSON(data);
         Destroy(GameObject.Find(uSerJson.name));
     }
 
@@ -122,8 +127,8 @@ public class NetworkManager : MonoBehaviour
     void OnPlayerMove(string data)
     {
         Debug.Log("+++++++ OnplayerMove +++");
-        UserJSON userJson = UserJSON.CreateFromJSON(data);
-        Vector3 position = new Vector3(userJson.position[0], userJson.position[1], userJson.position[2]);
+        UserJson userJson = UserJson.CreateFromJSON(data);
+        Vector2 movement = new Vector2(userJson.movement[0], userJson.movement[1]);
         if (userJson.name.Equals(playerNameInput))
         {
             return;
@@ -132,7 +137,8 @@ public class NetworkManager : MonoBehaviour
         GameObject p = GameObject.Find(userJson.name);
         if (p != null)
         {
-            p.transform.position = position;
+           ThirdPersonMovement thirdMove =  p.GetComponentInChildren<ThirdPersonMovement>();
+           thirdMove.HandleOtherPlayerMovement(movement, userJson.name);
         }
 
     }
@@ -140,7 +146,7 @@ public class NetworkManager : MonoBehaviour
     void OnPlayerTurn(string data)
     {
         Debug.Log("------On player turn------");
-        UserJSON userJson = UserJSON.CreateFromJSON(data);
+        UserJson userJson = UserJson.CreateFromJSON(data);
         Quaternion rotation = Quaternion.Euler(userJson.rotation[0], userJson.rotation[1], userJson.rotation[2]);
         if (userJson.name.Equals(playerNameInput))
         {
@@ -159,29 +165,29 @@ public class NetworkManager : MonoBehaviour
     #region JSONMessageClasses
     
     [Serializable]
-    public class PlayerJSON
+    public class PlayerJson
     {
         public string name;
-        public List<PointJSON> playerSpawnPoints;
+        public List<PointJson> playerSpawnPoints;
 
-        public PlayerJSON(string _name, List<GameObject> _playerSpawnPoints)
+        public PlayerJson(string _name, List<GameObject> _playerSpawnPoints)
         {
-            playerSpawnPoints = new List<PointJSON>();
+            playerSpawnPoints = new List<PointJson>();
             name = _name;
             foreach (GameObject playerSpawnPoint in _playerSpawnPoints)
             {
-                PointJSON pointJSON = new PointJSON(playerSpawnPoint);
+                PointJson pointJSON = new PointJson(playerSpawnPoint);
                 playerSpawnPoints.Add(pointJSON);
             }
         }
     }
 
     [Serializable]
-    public class PointJSON
+    public class PointJson
     {
         public float[] position;
         public float[] rotation;
-        public PointJSON(GameObject spawnPoint)
+        public PointJson(GameObject spawnPoint)
         {
             var transform1 = spawnPoint.transform;
             var position1 = transform1.position;
@@ -203,11 +209,11 @@ public class NetworkManager : MonoBehaviour
     }
 
     [Serializable]
-    public class PositionJSON
+    public class PositionJson
     {
         public float[] position;
 
-        public PositionJSON(Vector3 _position)
+        public PositionJson(Vector3 _position)
         {
             position = new float[] { _position.x, _position.y, _position.z };
         }
@@ -215,11 +221,22 @@ public class NetworkManager : MonoBehaviour
     }
     
     [Serializable]
-    public class RotationJSON
+    public class MovementJson
+    {
+        public float[] movement;
+
+        public MovementJson(Vector2 mvt)
+        {
+            movement = new float[] { mvt.x, mvt.y };
+        }
+    }
+    
+    [Serializable]
+    public class RotationJson
     {
         public float[] rotation;
 
-        public RotationJSON(Quaternion _rotation)
+        public RotationJson(Quaternion _rotation)
         {
             rotation = new float[] { _rotation.eulerAngles.x, _rotation.eulerAngles.y, _rotation.eulerAngles.z };
         }
@@ -227,15 +244,28 @@ public class NetworkManager : MonoBehaviour
     }
 
     [Serializable]
-    public class UserJSON
+    public class UserJson
     {
         public string name;
         public float[] position;
         public float[] rotation;
+        public float[] movement;
 
-        public static UserJSON CreateFromJSON(string data)
+        public static UserJson CreateFromJSON(string data)
         {
-            return JsonUtility.FromJson<UserJSON>(data);
+            return JsonUtility.FromJson<UserJson>(data);
+        }
+    }
+
+    [Serializable]
+    public class PlayerMovementJson
+    {
+        public string name;
+        public float[] movement;
+
+        public static PlayerMovementJson CreateFromJSON(string data)
+        {
+            return JsonUtility.FromJson<PlayerMovementJson>(data);
         }
     }
     #endregion

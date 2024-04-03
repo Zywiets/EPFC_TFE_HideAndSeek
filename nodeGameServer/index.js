@@ -1,11 +1,11 @@
-let app = require('express')();
-let server = require('http').createServer(app);
-let io = require('socket.io')(server);
+var app = require('express')();
+var server = require('http').createServer(app);
+var io = require('socket.io')(server);
 
 server.listen(3000);
 
-let playerSpawnPoints = [];
-let clients = [];
+var playerSpawnPoints = [];
+var clients = [];
 
 
 app.get('/', function(req, res){
@@ -14,15 +14,15 @@ app.get('/', function(req, res){
 
 io.on('connection',
     function (socket) {
-
         console.log("new connection socket" + socket.id);
-        let currentPlayer = {};
+
+        var currentPlayer = {};
         currentPlayer.name = 'unknown';
 
         socket.on('player connect', () => {
             console.log(currentPlayer.name + ' received. player connected');
             for (let i = 0; clients.length > i; i++) {
-                let playerConnected = {
+                var playerConnected = {
                     name: clients[i].name,
                     position: clients[i].position,
                     rotation: clients[i].rotation
@@ -36,10 +36,11 @@ io.on('connection',
 
         socket.on('play', data => {
             console.log(currentPlayer.name + ' received: play: ' + JSON.stringify(data));
-            playerSpawnPoints = [];
+
             if (0 === clients.length) {
+                playerSpawnPoints = [];
                 data.playerSpawnPoints.forEach(function (_playerSpawnPoint) {
-                    let playerSpawnPoint = {
+                    var playerSpawnPoint = {
                         position: _playerSpawnPoint.position,
                         rotation: _playerSpawnPoint.rotation
                     };
@@ -47,10 +48,12 @@ io.on('connection',
                 });
             }
             console.log(currentPlayer.name + ' play: ' + JSON.stringify(currentPlayer));
-            let randomSpawnPoint = playerSpawnPoints[Math.floor(Math.random() * playerSpawnPoints.length)];
-            currentPlayer = {
-                name: data.name,
-                position: randomSpawnPoint.position
+            console.log("-----------"+playerSpawnPoints)
+            var randomSpawnPoint = playerSpawnPoints[Math.floor(Math.random() * playerSpawnPoints.length)];
+            currentPlayer = {   name: data.name,
+                                position: randomSpawnPoint.position ? randomSpawnPoint.position : { x: 0, y: 0, z: 0 },
+                                rotation: randomSpawnPoint.rotation ? randomSpawnPoint.rotation : { x: 0, y: 0, z: 0 },
+                                movement: 0
             };
             clients.push(currentPlayer);
             // in your current game, tells you that you have joined
@@ -60,8 +63,8 @@ io.on('connection',
         });
 
         socket.on('player move', function (data) {
-            console.log('received: move: ' + JSON.stringify(data));
-            currentPlayer.position = data.position;
+            // console.log('received: move: ' + JSON.stringify(data));
+            currentPlayer.movement = data.movement;
             socket.broadcast.emit('player move', currentPlayer);
         });
 
