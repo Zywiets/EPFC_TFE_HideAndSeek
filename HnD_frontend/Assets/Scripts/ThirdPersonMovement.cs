@@ -89,7 +89,7 @@ public class ThirdPersonMovement : MonoBehaviour
         
         ApplyGravity();
         
-        HandleMovement();
+        HandleLocalPlayerMovement();
         
         if (_currPosition != _oldPosition)
         {
@@ -172,16 +172,33 @@ public class ThirdPersonMovement : MonoBehaviour
         
     }
 
-    private void HandleMovement()
+    private void HandleLocalPlayerMovement()
     {
         if (!isLocalPlayer) return;
+        HandleMovement();
+        _networkManager.CommandMove(_move);
+    }
+    
+    
+
+    public void HandleOtherPlayerMovement(Vector2 move, string playerName)
+    {
+        Debug.Log("++++++++++++ "+playerName +" received movement parameters : " + move );
+        CheckGrounded();
+        ApplyGravity();
+        
+        
+        _move = new Vector2(move.x, move.y);
+        HandleMovement();
+    }
+    private void HandleMovement()
+    {
         Vector3 direction = new Vector3(_move.x, 0f, _move.y);
         float inputMagnitude = Mathf.Clamp01(direction.magnitude);
         _animator.SetFloat("Input Magnitude", inputMagnitude, 0.05f, Time.deltaTime);
         float speedInputed = inputMagnitude * speed;
         direction.Normalize();
-        // if (_isGrounded)
-        if (true)
+        if (_isGrounded)
         {
             if (inputMagnitude >= 0.1f)
             {
@@ -201,37 +218,8 @@ public class ThirdPersonMovement : MonoBehaviour
             controller.Move(velocity * Time.deltaTime);
             ChangeCurrentValuePosRot();
         }
-        _networkManager.CommandMove(_move);
     }
 
-    public void HandleOtherPlayerMovement(Vector2 move, string playerName)
-    {
-        Debug.Log("++++++++++++ "+playerName +" received movement parameters : " + move );
-        _move = new Vector2(move.x, move.y);
-        Vector3 direction = new Vector3(_move.x, 0f, _move.y);
-        float inputMagnitude = Mathf.Clamp01(direction.magnitude);
-        _animator.SetFloat("Input Magnitude", inputMagnitude, 0.05f, Time.deltaTime);
-        float speedInputed = inputMagnitude * speed;
-        direction.Normalize();
-        if (_isGrounded)
-        {
-            if (inputMagnitude >= 0.1f)
-            {
-                _animator.SetBool("IsMoving", true);
-                Vector3 moveDir = GetMoveDirection(direction);
-                controller.Move(moveDir.normalized * (speedInputed * Time.deltaTime));
-            }
-            else
-            {
-                _animator.SetBool("IsMoving", false);
-            }
-        }
-        else
-        {
-            Vector3 velocity =  GetMoveDirection(direction) * (inputMagnitude * JumpHorizontal);
-            controller.Move(velocity * Time.deltaTime);
-        }
-    }
 
     private void ChangeCurrentValuePosRot()
     {
