@@ -9,35 +9,32 @@ var clients = [];
 
 
 app.get('/', function(req, res){
-    res.send("hey you answered my message");
+    res.send("Server is running!");
 });
 
-io.on('connection',
-    function (socket) {
-        console.log("new connection socket" + socket.id);
+io.on('connection', function (socket) {
+        console.log(`new connection socket: ${socket.id}`);
 
         var currentPlayer = {};
-        currentPlayer.name = 'unknown';
 
         socket.on('player connect', () => {
-            console.log(currentPlayer.name + ' received. player connected');
-            for (let i = 0; clients.length > i; i++) {
-                var playerConnected = {
-                    name: clients[i].name,
-                    position: clients[i].position,
-                    rotation: clients[i].rotation
-                };
-                //receive info about other players
-                socket.emit('other player connected', playerConnected);
-                console.log(currentPlayer.name + 'emit: other player connected: ' + JSON.stringify(playerConnected));
-
+            console.log('Player connected:', socket.id);
+            if(clients.length > 0) {
+                clients.forEach((client) => {
+                    const playerConnected = {
+                        name: client.name,
+                        position: client.position,
+                        rotation: client.rotation
+                    };
+                    socket.emit('other player connected', playerConnected);
+                });
             }
         });
 
         socket.on('play', data => {
-            console.log(currentPlayer.name + ' received: play: ' + JSON.stringify(data));
+            console.log('Player started playing: ', socket.id);
 
-            if (0 === clients.length) {
+            if (clients.length === 0) {
                 playerSpawnPoints = [];
                 data.playerSpawnPoints.forEach(function (_playerSpawnPoint) {
                     var playerSpawnPoint = {
@@ -47,8 +44,6 @@ io.on('connection',
                     playerSpawnPoints.push(playerSpawnPoint);
                 });
             }
-            console.log(currentPlayer.name + ' play: ' + JSON.stringify(currentPlayer));
-            console.log("-----------"+playerSpawnPoints)
             var randomSpawnPoint = playerSpawnPoints[Math.floor(Math.random() * playerSpawnPoints.length)];
             currentPlayer = {   name: data.name,
                                 position: randomSpawnPoint.position ? randomSpawnPoint.position : { x: 0, y: 0, z: 0 },
@@ -56,7 +51,7 @@ io.on('connection',
                                 movement: 0
             };
             clients.push(currentPlayer);
-            // in your current game, tells you that you have joined
+            // in your game, tells you that you have joined
             console.log(currentPlayer.name + ' emit: play: ' + JSON.stringify(currentPlayer));
             socket.emit('play', currentPlayer);
             socket.broadcast.emit('other player connected', currentPlayer);
@@ -65,7 +60,13 @@ io.on('connection',
         socket.on('player move', function (data) {
             // console.log('received: move: ' + JSON.stringify(data));
             currentPlayer.movement = data.movement;
+            currentPlayer.rotation = data.rotation;
+            currentPlayer.position = data.position;
             socket.broadcast.emit('player move', currentPlayer);
+        });
+
+        socket.on('player jump', function(data) {
+           socket.broadcast.emit('player jump', data);
         });
 
         socket.on('player turn', function (data) {

@@ -48,7 +48,7 @@ public class PlayerRole : MonoBehaviour
         // ThirdPersonMovement thirdHider = hiderAvatar.GetComponent<ThirdPersonMovement>();
         ThirdPersonMovement thirdSeeker = seekerAvatar.GetComponent<ThirdPersonMovement>();
 
-        // thirdHider.isLocalPlayer = !thirdHider.isLocalPlayer;
+        // Changing commands to be only responsive if local user
         thirdSeeker.isLocalPlayer = !thirdSeeker.isLocalPlayer;
         playerCamera.SetActive(true);
     }

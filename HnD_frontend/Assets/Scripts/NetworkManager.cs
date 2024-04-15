@@ -16,6 +16,7 @@ public class NetworkManager : MonoBehaviour
     public string playerNameInput;
     public GameObject player;
     public List<GameObject> playerSpawnPoints;
+    private UserJson _currentUser;
 
     // private void Awake()
     // {
@@ -38,6 +39,7 @@ public class NetworkManager : MonoBehaviour
         _sioCom.Instance.On("play", OnPlay);
         _sioCom.Instance.On("other player connected", OnOtherPlayerConnected);
         _sioCom.Instance.On("player move", OnPlayerMove);
+        _sioCom.Instance.On("player jump", OnPlayerJump);
         _sioCom.Instance.Connect();
     }
 
@@ -67,13 +69,21 @@ public class NetworkManager : MonoBehaviour
         canvas.gameObject.SetActive(false);
     }
     
-    public void CommandMove(Vector2 vec2)
+    public void CommandMove(Vector2 vec2, Quaternion newRot, Vector3 newPos)
     {
-        string data = JsonUtility.ToJson(new MovementJson(vec2));
+        _currentUser.movement = new[] { vec2.x, vec2.y };
+        _currentUser.rotation = new[] {newRot.eulerAngles.x, newRot.eulerAngles.y, newRot.eulerAngles.z };
+        _currentUser.position = new[] { newPos.x, newPos.y, newPos.z }; 
+        string data = JsonUtility.ToJson(_currentUser);
         _sioCom.Instance.Emit("player move", data, false);
         // socket.Emit("player move", new JSONObject(data));
     }
 
+    public void CommandJump()
+    {
+        string data = _currentUser.ToString();
+        _sioCom.Instance.Emit("player jump", data, false);
+    }
     public void ReadInputName(string inpName)
     {
         playerNameInput = inpName;
@@ -85,14 +95,14 @@ public class NetworkManager : MonoBehaviour
 
     void OnPlay(string data)
     {
-        Debug.Log("++++you joined play function ++++");
-        UserJson currentUser = UserJson.CreateFromJSON(data);
-        Vector3 position = new Vector3(currentUser.position[0], currentUser.position[1], currentUser.position[2]);
+        Debug.Log("++++you joined OnPlay function ++++");
+        _currentUser = UserJson.CreateFromJSON(data);
+        Vector3 position = new Vector3(_currentUser.position[0], _currentUser.position[1], _currentUser.position[2]);
         // Quaternion rotation = Quaternion.Euler(currentUser.rotation[0], currentUser.rotation[1], currentUser.rotation[2]);
         Quaternion rotation = Quaternion.Euler(0,0,0);
 
         GameObject p = Instantiate(player, position, rotation);
-        p.name = currentUser.name;
+        p.name = _currentUser.name;
         PlayerRole roleManag = p.GetComponent<PlayerRole>();
         roleManag.ChangeLocalPlayerStatus();
         CinemachineFreeLook cameraPriority = p.GetComponentInChildren<CinemachineFreeLook>();
@@ -105,13 +115,12 @@ public class NetworkManager : MonoBehaviour
         
         Vector3 position = new Vector3(userJSON.position[0], userJSON.position[1], userJSON.position[2]);
         Quaternion rotation = Quaternion.Euler(0,0,0);
-        GameObject o = GameObject.Find(userJSON.name) as GameObject;
+        GameObject o = GameObject.Find(userJSON.name);
         if (o != null)
         {
             Debug.Log("couldn't instantiate the player "+userJSON.name);
             return;
         }
-
         print("someone managed to instantiate");
         GameObject p = Instantiate(player, position, rotation);
         p.name = userJSON.name;
@@ -119,8 +128,8 @@ public class NetworkManager : MonoBehaviour
 
     void OnOtherPlayerDisconnected(string data)
     {
-        UserJson uSerJson = UserJson.CreateFromJSON(data);
-        Destroy(GameObject.Find(uSerJson.name));
+        UserJson userJson = UserJson.CreateFromJSON(data);
+        Destroy(GameObject.Find(userJson.name));
     }
 
 
@@ -129,18 +138,34 @@ public class NetworkManager : MonoBehaviour
         Debug.Log("+++++++ OnplayerMove +++");
         UserJson userJson = UserJson.CreateFromJSON(data);
         Vector2 movement = new Vector2(userJson.movement[0], userJson.movement[1]);
+        Quaternion rotation = Quaternion.Euler(userJson.rotation[0],userJson.rotation[1],userJson.rotation[2]);
+        Vector3 position = new Vector3(userJson.position[0], userJson.position[1], userJson.position[2]);
         if (userJson.name.Equals(playerNameInput))
         {
             return;
         }
-
         GameObject p = GameObject.Find(userJson.name);
         if (p != null)
         {
            ThirdPersonMovement thirdMove =  p.GetComponentInChildren<ThirdPersonMovement>();
-           thirdMove.HandleOtherPlayerMovement(movement, userJson.name);
+           thirdMove.HandleOtherPlayerMovement(movement, rotation, position);
         }
+    }
 
+    void OnPlayerJump(string data)
+    {
+        Debug.Log("°°°°°° OnplayerJump °°°°°");
+        UserJson userJson = UserJson.CreateFromJSON(data);
+        if (userJson.name.Equals(playerNameInput))
+        {
+            return;
+        }
+        GameObject p = GameObject.Find(userJson.name);
+        if (p != null)
+        {
+            ThirdPersonMovement thirdMove =  p.GetComponentInChildren<ThirdPersonMovement>();
+            thirdMove.HandleJump();
+        }
     }
 
     void OnPlayerTurn(string data)

@@ -93,13 +93,13 @@ public class ThirdPersonMovement : MonoBehaviour
         
         if (_currPosition != _oldPosition)
         {
-            //TODO had the networking elements
             _oldPosition = _currPosition;
         }
         if (_currRotation != _oldRotation)
         {
             _oldRotation = _currRotation;
         }
+        
     }
 
     private void CheckGrounded()
@@ -145,7 +145,7 @@ public class ThirdPersonMovement : MonoBehaviour
         controller.Move(_velocity * Time.deltaTime);
     }
 
-    private void HandleJump()
+    public void HandleJump()
     {
         if (!_isGrounded) return;
         
@@ -154,6 +154,7 @@ public class ThirdPersonMovement : MonoBehaviour
         _isJumping = true;
         _isGrounded = false;
         ChangeCurrentValuePosRot();
+        _networkManager.CommandJump();
     }
 
     private void HandleStartCrouch()
@@ -176,18 +177,21 @@ public class ThirdPersonMovement : MonoBehaviour
     {
         if (!isLocalPlayer) return;
         HandleMovement();
-        _networkManager.CommandMove(_move);
+        if (_currPosition != _oldPosition || _currRotation != _oldRotation)
+        {
+            _networkManager.CommandMove(_move, _currRotation, _currPosition);
+        }
     }
     
-    
-
-    public void HandleOtherPlayerMovement(Vector2 move, string playerName)
+    public void HandleOtherPlayerMovement(Vector2 move, Quaternion newRotation, Vector3 position)
     {
-        Debug.Log("++++++++++++ "+playerName +" received movement parameters : " + move );
+        Debug.Log("++++++++++++ received rotation parameters : " + move +" from " + newRotation);
+        if (transform.rotation != newRotation)
+        {
+            transform.rotation = newRotation;
+        }
         CheckGrounded();
         ApplyGravity();
-        
-        
         _move = new Vector2(move.x, move.y);
         HandleMovement();
     }
@@ -205,21 +209,21 @@ public class ThirdPersonMovement : MonoBehaviour
                 _animator.SetBool("IsMoving", true);
                 Vector3 moveDir = GetMoveDirection(direction);
                 controller.Move(moveDir.normalized * (speedInputed * Time.deltaTime));
-                ChangeCurrentValuePosRot();
+                if (isLocalPlayer) { ChangeCurrentValuePosRot(); }
             }
             else
             {
                 _animator.SetBool("IsMoving", false);
+                if (isLocalPlayer) { ChangeCurrentValuePosRot(); }
             }
         }
         else
         {
             Vector3 velocity =  GetMoveDirection(direction) * (inputMagnitude * JumpHorizontal);
             controller.Move(velocity * Time.deltaTime);
-            ChangeCurrentValuePosRot();
+            if (isLocalPlayer) { ChangeCurrentValuePosRot(); }
         }
     }
-
 
     private void ChangeCurrentValuePosRot()
     {
