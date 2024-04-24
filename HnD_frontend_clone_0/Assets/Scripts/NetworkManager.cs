@@ -17,6 +17,8 @@ public class NetworkManager : MonoBehaviour
     public GameObject player;
     public List<GameObject> playerSpawnPoints;
     private UserJson _currentUser;
+    private SignUpFormJson _signUpForm;
+    [SerializeField] private GameObject _joinGameCanvas;
 
     // private void Awake()
     // {
@@ -40,6 +42,9 @@ public class NetworkManager : MonoBehaviour
         _sioCom.Instance.On("other player connected", OnOtherPlayerConnected);
         _sioCom.Instance.On("player move", OnPlayerMove);
         _sioCom.Instance.On("player jump", OnPlayerJump);
+        _sioCom.Instance.On("test", OnTest);
+        _sioCom.Instance.On("sign in", OnSignIn);
+        _sioCom.Instance.On("sign up", OnSignUp);
         _sioCom.Instance.Connect();
     }
 
@@ -61,12 +66,28 @@ public class NetworkManager : MonoBehaviour
         yield return new WaitForSeconds(1f);
 
         string playerName = playerNameInput;
-        //List<SpawnPoint> playerSpawnPoints = GetComponent<PlayerSpawner>().playerSpawnPoints;
         PlayerJson playerJson = new PlayerJson(playerName, playerSpawnPoints);
         string data = JsonUtility.ToJson(playerJson);
         Debug.Log(data + " Est envoyé au server ---------");
         _sioCom.Instance.Emit("play", data, false);
+        _sioCom.Instance.Emit("test", data, false);
         canvas.gameObject.SetActive(false);
+    }
+
+    public void SendFormToDB(string us, string em, string pa)
+    {
+        _signUpForm = new SignUpFormJson(us, em, pa);
+        string data = JsonUtility.ToJson(_signUpForm);
+        Debug.Log("--------- SendFormToDB in Network Manager " + data);
+        _sioCom.Instance.Emit("sign up", data, false);
+    }
+    
+    public void CheckSignIn(string signInUsername, string signInPassword)
+    {
+        Debug.Log("++++++++++ Sending message to DB");
+        _signUpForm = new SignUpFormJson(signInUsername, signInPassword);
+        string data = JsonUtility.ToJson(_signUpForm);
+        _sioCom.Instance.Emit("sign in", data, false);
     }
     
     public void CommandMove(Vector2 vec2, Quaternion newRot, Vector3 newPos)
@@ -76,7 +97,6 @@ public class NetworkManager : MonoBehaviour
         _currentUser.position = new[] { newPos.x, newPos.y, newPos.z }; 
         string data = JsonUtility.ToJson(_currentUser);
         _sioCom.Instance.Emit("player move", data, false);
-        // socket.Emit("player move", new JSONObject(data));
     }
 
     public void CommandJump()
@@ -93,6 +113,30 @@ public class NetworkManager : MonoBehaviour
 
     #region Listening
 
+    void OnTest(string data)
+    {
+        Debug.Log(data);
+    }
+
+    void OnSignIn(string data)
+    {
+        Debug.Log("Recienve message from DB +++++++++++++");
+        bool res = bool.Parse(data);
+        MenuManager menuMan = _joinGameCanvas.GetComponent<MenuManager>();
+        if (res)
+        {
+            Debug.Log("Result positive from DB ++++++++++");
+            menuMan.SetOptionMenuPanel();
+        }
+        else
+        {
+            menuMan.SetSignInErrorMessage();
+        }
+    }
+    void OnSignUp(string data)
+    {
+        Debug.Log(data);
+    }
     void OnPlay(string data)
     {
         Debug.Log("++++you joined OnPlay function ++++");
@@ -204,6 +248,27 @@ public class NetworkManager : MonoBehaviour
                 PointJson pointJSON = new PointJson(playerSpawnPoint);
                 playerSpawnPoints.Add(pointJSON);
             }
+        }
+    }
+
+    [Serializable]
+    public class SignUpFormJson
+    {
+        public string username;
+        public string email;
+        public string password;
+
+        public SignUpFormJson(string us, string em, string pa)
+        {
+            username = us;
+            email = em;
+            password = pa;
+        }
+
+        public SignUpFormJson(string us, string pa)
+        {
+            username = us;
+            password = pa;
         }
     }
 

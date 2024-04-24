@@ -1,16 +1,31 @@
-var app = require('express')();
-var server = require('http').createServer(app);
-var io = require('socket.io')(server);
-
+const app = require('express')();
+const server = require('http').createServer(app);
+const io = require('socket.io')(server);
+const crypto = require('crypto');
+const mysql = require('mysql');
+const {TIME} = require("mysql/lib/protocol/constants/types");
+const sqlCon = mysql.createConnection({
+    host: "localhost",
+    user: "root",
+    password: "",
+    database: "hs-db"
+});
 server.listen(3000);
 
 var playerSpawnPoints = [];
 var clients = [];
+var hsPlayers = [];
 
 
 app.get('/', function(req, res){
     res.send("Server is running!");
 });
+
+function HashPassword(password) {
+    const hash = crypto.createHash('sha256');
+    hash.update(password);
+    return hash.digest('hex');
+}
 
 io.on('connection', function (socket) {
         console.log(`new connection socket: ${socket.id}`);
@@ -30,6 +45,64 @@ io.on('connection', function (socket) {
                 });
             }
         });
+
+        socket.on('test', data =>{
+            sqlCon.query("SELECT * FROM users", function(err, result, fields){
+                if (err) throw err;
+                result.forEach(row => {
+                    hsPlayers.push(row);
+                })
+                const testResponse = {
+                    users: hsPlayers
+                };
+                socket.emit('test', testResponse);
+            });
+        });
+
+        socket.on('sign in', data => {
+            console.log('Player trying to sign in: ',data);
+            sqlCon.query("SELECT users.password FROM users WHERE username = ?", [data.username], function(err, res, fields){
+               if(err) throw err;
+               const hashPass = data.password;
+               console.log('le mdp du user :', data.password)
+                console.log("le mdp de la DB", res[0].password)
+               if(res[0].password === hashPass){
+                   socket.emit('sign in', true)
+               }else{
+                   socket.emit('sign in', false)
+               }
+
+            });
+        });
+
+        socket.on('sign up', data => {
+            sqlCon.query("SELECT COUNT(*) as total FROM users WHERE username = ? OR ?",[data.username, data.email], function(err, result, fields){
+                if(err) throw err;
+                let tot = parseInt(result[0].total);
+                let success = false;
+                console.log("***** le total est "+ tot+" ******");
+                if(tot > 0 ) {
+                    socket.emit('sign in', success);
+                }else{
+                    success = true;
+                    const newUser = {
+                        username : data.username,
+                        email : data.email,
+                        password : HashPassword(data.password)
+                    }
+                    sqlCon.query("INSERT INTO `users` SET ?", newUser, function(err, result, fields){
+                        if(err) throw err;
+                        if (result && result.affectedRows > 0) {
+                            socket.emit("sign in", success)
+                            console.log('Query executed successfully. Affected rows:', result.affectedRows);
+                        } else {
+                            console.log('Query executed but did not affect any rows.');
+                        }
+                        socket.emit('sign up', result);
+                    })
+                }
+            })
+        })
 
         socket.on('play', data => {
             console.log('Player started playing: ', socket.id);
@@ -87,7 +160,6 @@ io.on('connection', function (socket) {
 
             }
         });
-
     });
 
 console.log('----Server is Running----');
