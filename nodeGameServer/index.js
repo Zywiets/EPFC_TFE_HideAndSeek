@@ -79,12 +79,10 @@ io.on('connection', function (socket) {
             sqlCon.query("SELECT COUNT(*) as total FROM users WHERE username = ? OR ?",[data.username, data.email], function(err, result, fields){
                 if(err) throw err;
                 let tot = parseInt(result[0].total);
-                let success = false;
                 console.log("***** le total est "+ tot+" ******");
                 if(tot > 0 ) {
-                    socket.emit('sign in', success);
+                    socket.emit('sign in', false);
                 }else{
-                    success = true;
                     const newUser = {
                         username : data.username,
                         email : data.email,
@@ -93,9 +91,10 @@ io.on('connection', function (socket) {
                     sqlCon.query("INSERT INTO `users` SET ?", newUser, function(err, result, fields){
                         if(err) throw err;
                         if (result && result.affectedRows > 0) {
-                            socket.emit("sign in", success)
+                            socket.emit("sign up", true)
                             console.log('Query executed successfully. Affected rows:', result.affectedRows);
                         } else {
+                            socket.emit("sign up" , false)
                             console.log('Query executed but did not affect any rows.');
                         }
                         socket.emit('sign up', result);

@@ -11,25 +11,30 @@ public class MenuManager : MonoBehaviour
    [SerializeField] private GameObject signInPanel;
    [SerializeField] private GameObject optionsMenuPanel;
    [SerializeField] private GameObject registerPanel;
+   
    private GameObject _currentPanel;
+   
    private string _signInUsername;
    private string _signInPassword;
    private bool _isCheckingUserPass;
+   
    [SerializeField] private TMP_Text signInError;
-   private string _signInErrorMessage = "Invalid username or password. Please try again";
-   
-   
+   private const string SignInErrorMessage = "Invalid username or password. Please try again";
+
    private string _registerUsername = null;
    private string _email = null;
    private string _registerPassword = null;
    private string _passwordConfirm = null;
 
-   public GameObject usernameError;
-   public GameObject emailError;
-   public GameObject passwordError;
-   public GameObject passwordConfirmError;
-   
-   
+   [SerializeField] private TMP_Text usernameError;
+   private const string SignUpUsernameError = "Username must be longer than 3 and shorter than 25";
+   [SerializeField] private TMP_Text emailError;
+   private const string SignUpEmailError = "Must be a valid email                 !!!!";
+   [SerializeField] private TMP_Text passwordError;
+   private const string SignUpPasswordError = "Must be longer than 3, shorter than 25, contain a special character and an uppercase";
+   [SerializeField] private TMP_Text passwordConfirmError;
+   private const string SignUpPasswordConfirm = "Confirm Password be the same as the password";
+
    private const string EmailPattern = @"^[^@\s]+@[^@\s]+\.(com|net|org|gov)$";
    
    private NetworkManager _networkManager;
@@ -74,6 +79,7 @@ public class MenuManager : MonoBehaviour
    public void SetSignInPanel()
    {
       SetPanel(signInPanel);
+      _networkManager.SignOut();
    }
 
 
@@ -89,16 +95,15 @@ public class MenuManager : MonoBehaviour
 
    public void CheckUsernamePassword()
    {
-      if (_signInUsername?.Length > 3 && _signInPassword?.Length > 3 && !_isCheckingUserPass)
-      {
-         _networkManager.CheckSignIn(_signInUsername, _signInPassword);
-         _isCheckingUserPass = true;
-      }
+      if (_isCheckingUserPass) return;
+      _networkManager.CheckSignIn(_signInUsername, _signInPassword);
+      _isCheckingUserPass = true;
    }
 
    public void SetSignInErrorMessage()
    {
-      signInError.SetText(_signInErrorMessage);
+      _isCheckingUserPass = false;
+      signInError.SetText(SignInErrorMessage);
    }
    
    public void IsValidUsername(string word)
@@ -106,13 +111,13 @@ public class MenuManager : MonoBehaviour
       if (word.Length < 3 || word.Length > 25)
       {
          _registerUsername = null;
-         usernameError.SetActive(true);
+         usernameError.SetText(SignUpUsernameError);
          Debug.Log(word + " is shorter than 3 or longer than 25");
       }
       else
       {
          _registerUsername = word;
-         usernameError.SetActive(false);
+         usernameError.SetText("");
       }
    }
    public void IsValidEmail(string word)
@@ -120,13 +125,13 @@ public class MenuManager : MonoBehaviour
       if (Regex.IsMatch(word, EmailPattern))
       {
          _email = word;
-         emailError.SetActive(false);
+         emailError.SetText("");
       }
       else
       {
          _email = null;
          Debug.Log(word+"Is not a valid email");
-         emailError.SetActive(true);
+         emailError.SetText(SignUpEmailError);
       }
    }
    public void IsValidPassword(string word)
@@ -150,15 +155,15 @@ public class MenuManager : MonoBehaviour
          Debug.Log(word + "doesn't have a special char");
       }
       
-      passwordError.SetActive(!isValid);
-      
       if (isValid)
       {
          _registerPassword = word;
+         passwordError.SetText("");
       }
       else
       {
          _registerPassword = null;
+         passwordError.SetText(SignUpPasswordError);
       }
       
    }
@@ -166,12 +171,12 @@ public class MenuManager : MonoBehaviour
    {
       if (word == _registerPassword && word != null)
       {
-         passwordConfirmError.SetActive(false);
+         passwordConfirmError.SetText("");
          _passwordConfirm = word;
       }
       else
       {
-         passwordConfirmError.SetActive(true);
+         passwordConfirmError.SetText(SignUpPasswordConfirm);
          _passwordConfirm = null;
          Debug.Log("Passwords don't match");
       }

@@ -6,6 +6,7 @@ using Firesplash.UnityAssets.SocketIO;
 using TMPro;
 using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 public class NetworkManager : MonoBehaviour
@@ -18,7 +19,7 @@ public class NetworkManager : MonoBehaviour
     public List<GameObject> playerSpawnPoints;
     private UserJson _currentUser;
     private SignUpFormJson _signUpForm;
-    [SerializeField] private GameObject _joinGameCanvas;
+    [SerializeField] private GameObject joinGameCanvas;
 
     // private void Awake()
     // {
@@ -52,6 +53,11 @@ public class NetworkManager : MonoBehaviour
     {
         Debug.Log("+++++++++ Le bouton join game fonctionne ++++++++");
         StartCoroutine(ConnectToServer());
+    }
+
+    public void SignOut()
+    {
+        _currentUser = null;
     }
 
     #region Commands
@@ -122,10 +128,11 @@ public class NetworkManager : MonoBehaviour
     {
         Debug.Log("Recienve message from DB +++++++++++++");
         bool res = bool.Parse(data);
-        MenuManager menuMan = _joinGameCanvas.GetComponent<MenuManager>();
+        MenuManager menuMan = joinGameCanvas.GetComponent<MenuManager>();
         if (res)
         {
             Debug.Log("Result positive from DB ++++++++++");
+            _currentUser = new UserJson(_signUpForm.username);
             menuMan.SetOptionMenuPanel();
         }
         else
@@ -184,7 +191,7 @@ public class NetworkManager : MonoBehaviour
         Vector2 movement = new Vector2(userJson.movement[0], userJson.movement[1]);
         Quaternion rotation = Quaternion.Euler(userJson.rotation[0],userJson.rotation[1],userJson.rotation[2]);
         Vector3 position = new Vector3(userJson.position[0], userJson.position[1], userJson.position[2]);
-        if (userJson.name.Equals(playerNameInput))
+        if (userJson.name.Equals(_currentUser.name))
         {
             return;
         }
@@ -193,6 +200,10 @@ public class NetworkManager : MonoBehaviour
         {
            ThirdPersonMovement thirdMove =  p.GetComponentInChildren<ThirdPersonMovement>();
            thirdMove.HandleOtherPlayerMovement(movement, rotation, position);
+        }
+        else
+        {
+            Debug.Log("--------- Couln't find Player ( " + userJson.name+" ) to move");
         }
     }
 
@@ -344,6 +355,11 @@ public class NetworkManager : MonoBehaviour
         public static UserJson CreateFromJSON(string data)
         {
             return JsonUtility.FromJson<UserJson>(data);
+        }
+
+        public UserJson(string n)
+        {
+            name = n;
         }
     }
 
