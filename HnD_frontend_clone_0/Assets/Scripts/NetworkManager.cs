@@ -12,7 +12,6 @@ using UnityEngine.UI;
 public class NetworkManager : MonoBehaviour
 {
     public static NetworkManager instance;
-    public Canvas canvas;
     private SocketIOCommunicator _sioCom;
     public string playerNameInput;
     public GameObject player;
@@ -46,6 +45,7 @@ public class NetworkManager : MonoBehaviour
         _sioCom.Instance.On("test", OnTest);
         _sioCom.Instance.On("sign in", OnSignIn);
         _sioCom.Instance.On("sign up", OnSignUp);
+        _sioCom.Instance.On("rankings", OnRankingsReceived);
         _sioCom.Instance.Connect();
     }
 
@@ -71,13 +71,12 @@ public class NetworkManager : MonoBehaviour
         
         yield return new WaitForSeconds(1f);
 
-        string playerName = playerNameInput;
-        PlayerJson playerJson = new PlayerJson(playerName, playerSpawnPoints);
+        
+        PlayerJson playerJson = new PlayerJson(_currentUser.name, playerSpawnPoints);
         string data = JsonUtility.ToJson(playerJson);
         Debug.Log(data + " Est envoyé au server ---------");
         _sioCom.Instance.Emit("play", data, false);
-        _sioCom.Instance.Emit("test", data, false);
-        canvas.gameObject.SetActive(false);
+        joinGameCanvas.gameObject.SetActive(false);
     }
 
     public void SendFormToDB(string us, string em, string pa)
@@ -94,6 +93,11 @@ public class NetworkManager : MonoBehaviour
         _signUpForm = new SignUpFormJson(signInUsername, signInPassword);
         string data = JsonUtility.ToJson(_signUpForm);
         _sioCom.Instance.Emit("sign in", data, false);
+    }
+
+    public void GetAllRankings()
+    {
+        _sioCom.Instance.Emit("rankings");
     }
     
     public void CommandMove(Vector2 vec2, Quaternion newRot, Vector3 newPos)
@@ -158,6 +162,23 @@ public class NetworkManager : MonoBehaviour
         roleManag.ChangeLocalPlayerStatus();
         CinemachineFreeLook cameraPriority = p.GetComponentInChildren<CinemachineFreeLook>();
         cameraPriority.Priority = 10;
+    }
+
+    void OnRankingsReceived(string data)
+    {
+        RankingJson[] rankings = JsonHelper.FromJson<RankingJson>(data);
+        List<RankingJson> userRankings = new List<RankingJson>(rankings);
+
+        GameObject rankingManagerObject = GameObject.Find("Rankings Panel");
+        if (rankingManagerObject)
+        {
+            RankingTableManager ranMan = rankingManagerObject.GetComponent<RankingTableManager>();
+            if (ranMan)
+            {
+                ranMan.FillRankings(userRankings);
+            }
+        }
+
     }
     void OnOtherPlayerConnected(string data)
     {
@@ -259,6 +280,19 @@ public class NetworkManager : MonoBehaviour
                 PointJson pointJSON = new PointJson(playerSpawnPoint);
                 playerSpawnPoints.Add(pointJSON);
             }
+        }
+    }
+
+    [Serializable]
+    public class RankingJson
+    {
+        public string username;
+        public double totalScore;
+
+        public RankingJson(string na, double sc)
+        {
+            username = na;
+            totalScore = sc;
         }
     }
 
@@ -375,5 +409,34 @@ public class NetworkManager : MonoBehaviour
         }
     }
     #endregion
+    // To help with the limitations of JsonUtility
+    public static class JsonHelper
+    {
+        public static T[] FromJson<T>(string json)
+        {
+            string newJson = "{ \"Items\": " + json + "}";
+            Wrapper<T> wrapper = JsonUtility.FromJson<Wrapper<T>>(newJson);
+            return wrapper.Items;
+        }
 
+        public static string ToJson<T>(T[] array)
+        {
+            Wrapper<T> wrapper = new Wrapper<T>();
+            wrapper.Items = array;
+            return JsonUtility.ToJson(wrapper);
+        }
+
+        public static string ToJson<T>(T[] array, bool prettyPrint)
+        {
+            Wrapper<T> wrapper = new Wrapper<T>();
+            wrapper.Items = array;
+            return JsonUtility.ToJson(wrapper, prettyPrint);
+        }
+
+        [Serializable]
+        private class Wrapper<T>
+        {
+            public T[] Items;
+        }
+    }
 }

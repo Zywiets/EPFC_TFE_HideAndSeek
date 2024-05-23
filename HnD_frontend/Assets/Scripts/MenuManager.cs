@@ -11,6 +11,7 @@ public class MenuManager : MonoBehaviour
    [SerializeField] private GameObject signInPanel;
    [SerializeField] private GameObject optionsMenuPanel;
    [SerializeField] private GameObject registerPanel;
+   [SerializeField] private GameObject rankingsPanel;
    
    private GameObject _currentPanel;
    
@@ -80,6 +81,11 @@ public class MenuManager : MonoBehaviour
    {
       SetPanel(signInPanel);
       _networkManager.SignOut();
+   }
+
+   public void SetRankingsPanel()
+   {
+      SetPanel(rankingsPanel);
    }
 
 

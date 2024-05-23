@@ -103,6 +103,21 @@ io.on('connection', function (socket) {
             })
         })
 
+        socket.on('rankings', data => {
+            sqlCon.query("SELECT u.user_id, u.username, COALESCE(SUM(s.points), 0) AS total_score FROM users u LEFT JOIN  score s ON u.user_id = s.user_id GROUP BY  u.user_id ORDER BY total_score DESC", function(err, result, fields){
+                if(err) throw err;
+                let userRankings= []
+                result.forEach(function(data) {
+                    let userRank = {
+                        username : data.username,
+                        totalScore : data.total_score
+                    }
+                    userRankings.push(userRank);
+                })
+                socket.emit('rankings', userRankings)
+            })
+        })
+
         socket.on('play', data => {
             console.log('Player started playing: ', socket.id);
 
@@ -130,7 +145,7 @@ io.on('connection', function (socket) {
         });
 
         socket.on('player move', function (data) {
-            // console.log('received: move: ' + JSON.stringify(data));
+            console.log('received: move: ' + JSON.stringify(data));
             currentPlayer.movement = data.movement;
             currentPlayer.rotation = data.rotation;
             currentPlayer.position = data.position;

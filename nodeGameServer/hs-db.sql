@@ -9,11 +9,18 @@ CREATE TABLE users (
     password VARCHAR(255) NOT NULL
 );
 
-CREATE TABLE game_data (
-    game_data_id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    player_score INT NOT NULL,
-    FOREIGN KEY (user_id) REFERENCES users(user_id)
+CREATE TABLE games (
+    game_id INT AUTO_INCREMENT PRIMARY KEY,
+    winner_id INT NOT NULL,
+    FOREIGN KEY (winner_id) REFERENCES users(user_id)
+);
+
+CREATE TABLE score (
+ user_id INT NOT NULL,
+ game_id INT NOT NULL,
+ points INT NOT NULL,
+ FOREIGN KEY (user_id) REFERENCES users(user_id),
+ FOREIGN KEY (game_id) REFERENCES games(game_id)
 );
 
 INSERT INTO users (username, email, password) VALUES
@@ -23,9 +30,18 @@ INSERT INTO users (username, email, password) VALUES
 ('ToxicTrollKing', 'MichelPlumart@hotmail.com', 'Password2+'),
 ('xXDarkLord70Xx', 'ShakiraFan1984@star-co.net.kp', 'TrueLeader4+');
 
-INSERT INTO game_data (user_id, player_score) VALUES
-(1, 0),
-(2,0),
-(3, 1500),
-(4, 750),
-(5, 750);
+INSERT INTO games (winner_id) VALUES
+(1),
+(1);
+
+
+INSERT INTO score (user_id, game_id, points) VALUES
+(1, 1, 450),
+(2, 1, 350),
+(3, 1, 100),
+(4, 1, 50),
+(1, 2, 550),
+(2, 2, 250),
+(3, 2, 50),
+(4, 2, 150);
+

@@ -104,7 +104,8 @@ public class ThirdPersonMovement : MonoBehaviour
 
     private void CheckGrounded()
     {
-        _isGrounded = Physics.CheckSphere(groundCheck.position, groundDistance, groundMask);
+        // _isGrounded = Physics.CheckSphere(groundCheck.position, groundDistance, groundMask);
+        _isGrounded = true;
         if (_isGrounded)
         {
             if (!(_velocity.y < 0)) return;
@@ -198,6 +199,7 @@ public class ThirdPersonMovement : MonoBehaviour
     private void HandleMovement()
     {
         Vector3 direction = new Vector3(_move.x, 0f, _move.y);
+        Debug.Log(direction + "   <=  la direction est 3333333333333333333");
         float inputMagnitude = Mathf.Clamp01(direction.magnitude);
         _animator.SetFloat("Input Magnitude", inputMagnitude, 0.05f, Time.deltaTime);
         float speedInputed = inputMagnitude * speed;
