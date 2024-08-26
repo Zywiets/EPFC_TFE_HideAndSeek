@@ -7,13 +7,17 @@ using UnityEngine.Serialization;
 
 public class PlayerRole : MonoBehaviour
 {
-    // [SerializeField] private GameObject hiderAvatar;
     [SerializeField] private GameObject seekerAvatar;
     [SerializeField] private GameObject thirdPersonCamera;
     [SerializeField] private GameObject playerCamera;
     
     private CinemachineFreeLook _pCam;
     private Transform _tFollowTarget;
+
+    [SerializeField] private GameObject _bodyOfAvatar;
+    [SerializeField] private Material _seekerMaterial;
+    [SerializeField] private Material _hiderMaterial;
+    [SerializeField] private SkinnedMeshRenderer _rendererAvatar;
 
     private void Start()
     {
@@ -51,5 +55,22 @@ public class PlayerRole : MonoBehaviour
         // Changing commands to be only responsive if local user
         thirdSeeker.isLocalPlayer = !thirdSeeker.isLocalPlayer;
         playerCamera.SetActive(true);
+    }
+
+    public void SetHiderMaterial()
+    {
+        _rendererAvatar.material = _hiderMaterial;
+    }
+
+    public void SetSeekerMaterial()
+    {
+        if (_rendererAvatar != null)
+        {
+            _rendererAvatar.material = _seekerMaterial;
+        }
+        else
+        {
+            Debug.Log("rendereravatar is null 000000000000");
+        }        
     }
 }

@@ -47,6 +47,10 @@ MonoBehaviour:
   seekerAvatar: {fileID: 5381044245335691273}
   thirdPersonCamera: {fileID: 5381044245135035713}
   playerCamera: {fileID: 0}
+  _bodyOfAvatar: {fileID: 0}
+  _seekerMaterial: {fileID: 0}
+  _hiderMaterial: {fileID: 0}
+  _rendererAvatar: {fileID: 0}
 --- !u!1 &5381044244603599695
 GameObject:
   m_ObjectHideFlags: 0
@@ -166,7 +170,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5381044244826292836}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 2.1245203, y: -0.07700014, z: 0.010222912}
+  m_LocalPosition: {x: -0.1254797, y: -0.07700014, z: 0.010222912}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -610,7 +614,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5381044245106700613}
-  m_LocalRotation: {x: 0.17569318, y: 0.000000018938078, z: -0.0000000033798655, w: 0.984445}
+  m_LocalRotation: {x: 0.19825314, y: -0.000000005744592, z: 0.000000001161947, w: 0.9801509}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -722,7 +726,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5381044245135035713}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -5.4828877, y: 2.852569, z: -20.729025}
+  m_LocalPosition: {x: -5.4828877, y: 2.852569, z: -18.729025}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -825,11 +829,11 @@ MonoBehaviour:
   m_BindingMode: 4
   m_SplineCurvature: 0.2
   m_Orbits:
-  - m_Height: 11.2
+  - m_Height: 9
     m_Radius: 12
   - m_Height: 6.98
-    m_Radius: 17
-  - m_Height: 4.06
+    m_Radius: 15
+  - m_Height: 6.06
     m_Radius: 9.34
   m_LegacyHeadingBias: 3.4028235e+38
   m_Rigs:
@@ -981,6 +985,10 @@ MonoBehaviour:
   seekerAvatar: {fileID: 5381044245335691273}
   thirdPersonCamera: {fileID: 5381044245135035713}
   playerCamera: {fileID: 5381044246081838903}
+  _bodyOfAvatar: {fileID: 5381044245838903874}
+  _seekerMaterial: {fileID: 2100000, guid: fcb5a9ca924950a418a79495fe40b978, type: 2}
+  _hiderMaterial: {fileID: 7325046090497753323, guid: 15a211424f8711448bebb0dc7847eb42, type: 3}
+  _rendererAvatar: {fileID: 5381044245838903876}
 --- !u!1 &5381044245157039974
 GameObject:
   m_ObjectHideFlags: 0
@@ -1510,7 +1518,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5381044245556092828}
-  m_LocalRotation: {x: 0.19357069, y: 0.00000000844048, z: -0.000000001665327, w: 0.9810864}
+  m_LocalRotation: {x: 0.21604878, y: -0.00000001144501, z: 0.0000000025324909, w: 0.9763826}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -1687,7 +1695,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_BindingMode: 4
-  m_FollowOffset: {x: 0, y: 6.98, z: -17}
+  m_FollowOffset: {x: 0, y: 6.98, z: -15}
   m_XDamping: 1
   m_YDamping: 1
   m_ZDamping: 1
@@ -2151,7 +2159,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_BindingMode: 4
-  m_FollowOffset: {x: 0, y: 6.98, z: -17}
+  m_FollowOffset: {x: 0, y: 6.98, z: -15}
   m_XDamping: 1
   m_YDamping: 1
   m_ZDamping: 1
@@ -2989,7 +2997,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_BindingMode: 4
-  m_FollowOffset: {x: 0, y: 6.98, z: -17}
+  m_FollowOffset: {x: 0, y: 6.98, z: -15}
   m_XDamping: 1
   m_YDamping: 1
   m_ZDamping: 1
@@ -3176,7 +3184,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5381044246616842019}
-  m_LocalRotation: {x: 0.15780501, y: 0.000000008495394, z: -0.0000000013576262, w: 0.9874703}
+  m_LocalRotation: {x: 0.18043914, y: -0.00000001692396, z: 0.0000000031047047, w: 0.9835862}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0

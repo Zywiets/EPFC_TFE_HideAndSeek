@@ -8,18 +8,32 @@ using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Serialization;
 using UnityEngine.UI;
+using Random = System.Random;
 
 public class NetworkManager : MonoBehaviour
 {
     public static NetworkManager instance;
     private SocketIOCommunicator _sioCom;
     public string playerNameInput;
-    public GameObject player;
+    public GameObject localplayerGameObject;
+    public GameObject nonLocalPlayerGameObject;
     public List<GameObject> playerSpawnPoints;
     private UserJson _currentUser;
     private SignUpFormJson _signUpForm;
+    private Dictionary<string,GameObject> _nonLocalPlayersDict = new Dictionary<string, GameObject>();
+    private List<string> _nonLocalPlayersNames = new List<string>();
     [SerializeField] private GameObject joinGameCanvas;
+    [SerializeField] private GameObject startGameButton;
+    private MenuManager _menuManagerComponent;
 
+    private GameObject _localPlayerGameObject;
+    private PlayerRole _localPlayerRoleComp;
+    private bool _isSignedIn;
+    private bool _isLobbyHost;
+
+    private Dictionary<string, double> _scorebord = new Dictionary<string, double>();
+    private List<string> _toBeSeekerList = new List<string>();
+    private int _roundCompt;
     // private void Awake()
     // {
     //     if (Instance == null)
@@ -36,15 +50,19 @@ public class NetworkManager : MonoBehaviour
     {
         DontDestroyOnLoad(gameObject);
         _sioCom = GetComponent<SocketIOCommunicator>();
+        _menuManagerComponent = joinGameCanvas.GetComponent<MenuManager>();
         // subscribe to all the various websocket events  
         _sioCom.Instance.On("connect", (payload) => { Debug.Log(payload+"     ***** LOCAL: Connected "+ _sioCom.Instance.SocketID+"  *****"); });
         _sioCom.Instance.On("play", OnPlay);
         _sioCom.Instance.On("other player connected", OnOtherPlayerConnected);
+        _sioCom.Instance.On("other player disconnected", OnOtherPlayerDisconnected);
         _sioCom.Instance.On("player move", OnPlayerMove);
         _sioCom.Instance.On("player jump", OnPlayerJump);
+        _sioCom.Instance.On("other player in lobby", OnOtherPlayerInLobby);
         _sioCom.Instance.On("test", OnTest);
         _sioCom.Instance.On("sign in", OnSignIn);
         _sioCom.Instance.On("sign up", OnSignUp);
+        _sioCom.Instance.On("lobby host", OnLobbyHost);
         _sioCom.Instance.On("rankings", OnRankingsReceived);
         _sioCom.Instance.Connect();
     }
@@ -52,16 +70,12 @@ public class NetworkManager : MonoBehaviour
     public void JoinGame()
     {
         Debug.Log("+++++++++ Le bouton join game fonctionne ++++++++");
-        StartCoroutine(ConnectToServer());
+        Shuffle(playerSpawnPoints);
+        PlayerJson playAndSpawns = new PlayerJson(_currentUser.name, playerSpawnPoints);
+        string data = JsonUtility.ToJson(playAndSpawns);
+        _sioCom.Instance.Emit("play", data, false);
+        joinGameCanvas.gameObject.SetActive(false);
     }
-
-    public void SignOut()
-    {
-        _currentUser = null;
-    }
-
-    #region Commands
-
     private IEnumerator ConnectToServer()
     {
         
@@ -71,12 +85,27 @@ public class NetworkManager : MonoBehaviour
         
         yield return new WaitForSeconds(1f);
 
-        
-        PlayerJson playerJson = new PlayerJson(_currentUser.name, playerSpawnPoints);
-        string data = JsonUtility.ToJson(playerJson);
-        Debug.Log(data + " Est envoyé au server ---------");
-        _sioCom.Instance.Emit("play", data, false);
-        joinGameCanvas.gameObject.SetActive(false);
+        // Shuffle(playerSpawnPoints);
+        // PlayerJson playAndSpawns = new PlayerJson(_currentUser.name, playerSpawnPoints);
+        // string data = JsonUtility.ToJson(playAndSpawns);
+        // // Debug.Log(data + " Est envoyé au server ---------");
+        // _sioCom.Instance.Emit("play", data, false);
+        // joinGameCanvas.gameObject.SetActive(false);
+    }
+
+    public void SignOut()
+    {
+        _currentUser = null;
+        _isSignedIn = false;
+    }
+
+    #region Commands
+
+    public void JoinLobby()
+    {
+        PlayerJson player = new PlayerJson(_currentUser.name);
+        string data = JsonUtility.ToJson(player);
+        _sioCom.Instance.Emit("join lobby", data, false);
     }
 
     public void SendFormToDB(string us, string em, string pa)
@@ -114,6 +143,7 @@ public class NetworkManager : MonoBehaviour
         string data = _currentUser.ToString();
         _sioCom.Instance.Emit("player jump", data, false);
     }
+    
     public void ReadInputName(string inpName)
     {
         playerNameInput = inpName;
@@ -128,20 +158,28 @@ public class NetworkManager : MonoBehaviour
         Debug.Log(data);
     }
 
+    void OnOtherPlayerInLobby(string data)
+    {
+        if (!_isSignedIn) return;
+        Debug.Log("other player in lobby : "+ data);
+        UserJson lobbyPlayer = UserJson.CreateFromJSON(data);
+        if (lobbyPlayer.name.Equals(_currentUser.name)) return;
+        _menuManagerComponent.AddToLobby(lobbyPlayer.name);
+    }
     void OnSignIn(string data)
     {
         Debug.Log("Recienve message from DB +++++++++++++");
         bool res = bool.Parse(data);
-        MenuManager menuMan = joinGameCanvas.GetComponent<MenuManager>();
+        _isSignedIn = res;
         if (res)
         {
             Debug.Log("Result positive from DB ++++++++++");
             _currentUser = new UserJson(_signUpForm.username);
-            menuMan.SetOptionMenuPanel();
+            _menuManagerComponent.SetOptionMenuPanel();
         }
         else
         {
-            menuMan.SetSignInErrorMessage();
+            _menuManagerComponent.SetSignInErrorMessage();
         }
     }
     void OnSignUp(string data)
@@ -151,19 +189,61 @@ public class NetworkManager : MonoBehaviour
     void OnPlay(string data)
     {
         Debug.Log("++++you joined OnPlay function ++++");
-        _currentUser = UserJson.CreateFromJSON(data);
-        Vector3 position = new Vector3(_currentUser.position[0], _currentUser.position[1], _currentUser.position[2]);
-        // Quaternion rotation = Quaternion.Euler(currentUser.rotation[0], currentUser.rotation[1], currentUser.rotation[2]);
-        Quaternion rotation = Quaternion.Euler(0,0,0);
+        UserJson[] usersJson = JsonHelper.FromJson<UserJson>(data);
+        List<UserJson> playersPlayingList = new List<UserJson>(usersJson);
+        //_gameManagerComponent.SetPlayerScorebord(playersPlayingList);
+        
+        foreach (UserJson plyrs in playersPlayingList)
+        {
+            Vector3 position = new Vector3(plyrs.position[0], plyrs.position[1], plyrs.position[2]);
+            Quaternion rotation = Quaternion.Euler(0,0,0);
+            if (plyrs.name.Equals(_currentUser.name))
+            {
+                _localPlayerGameObject = Instantiate(localplayerGameObject, position, rotation);
+                _localPlayerRoleComp = _localPlayerGameObject.GetComponent<PlayerRole>();
+                _localPlayerRoleComp.ChangeLocalPlayerStatus();
+                CinemachineFreeLook cameraPriority = _localPlayerGameObject.GetComponentInChildren<CinemachineFreeLook>();
+                cameraPriority.Priority = 10;
+                _localPlayerGameObject.name = plyrs.name;
+            }
+            else
+            {
+                GameObject spawnedPlayerGameObject = Instantiate(nonLocalPlayerGameObject, position, rotation);
+                spawnedPlayerGameObject.name = plyrs.name;
+                _nonLocalPlayersDict.Add(spawnedPlayerGameObject.name, spawnedPlayerGameObject);
+            }
+            _scorebord.Add(plyrs.name, 0);
+            _toBeSeekerList.Add(plyrs.name);
+        }
+        
 
-        GameObject p = Instantiate(player, position, rotation);
-        p.name = _currentUser.name;
-        PlayerRole roleManag = p.GetComponent<PlayerRole>();
-        roleManag.ChangeLocalPlayerStatus();
-        CinemachineFreeLook cameraPriority = p.GetComponentInChildren<CinemachineFreeLook>();
-        cameraPriority.Priority = 10;
     }
+    void OnOtherPlayerConnected(string data)
+        {
+            print("someone joined");
+            UserJson userJson = UserJson.CreateFromJSON(data);
+            
+            Vector3 position = new Vector3(userJson.position[0], userJson.position[1], userJson.position[2]);
+            Quaternion rotation = Quaternion.Euler(0,0,0);
+            GameObject o = GameObject.Find(userJson.name);
+            if (o != null)
+            {
+                Debug.Log("couldn't instantiate the player "+userJson.name);
+                return;
+            }
+            print("someone managed to instantiate");
+            GameObject p = Instantiate(nonLocalPlayerGameObject, position, rotation);
+            p.name = userJson.name;
+            _nonLocalPlayersDict.Add(p.name, p);
+        }
+    
+    
 
+    void OnLobbyHost(string data)
+    {
+        startGameButton.SetActive(true);
+        _isLobbyHost = true;
+    }
     void OnRankingsReceived(string data)
     {
         RankingJson[] rankings = JsonHelper.FromJson<RankingJson>(data);
@@ -180,28 +260,14 @@ public class NetworkManager : MonoBehaviour
         }
 
     }
-    void OnOtherPlayerConnected(string data)
-    {
-        print("someone joined");
-        UserJson userJSON = UserJson.CreateFromJSON(data);
-        
-        Vector3 position = new Vector3(userJSON.position[0], userJSON.position[1], userJSON.position[2]);
-        Quaternion rotation = Quaternion.Euler(0,0,0);
-        GameObject o = GameObject.Find(userJSON.name);
-        if (o != null)
-        {
-            Debug.Log("couldn't instantiate the player "+userJSON.name);
-            return;
-        }
-        print("someone managed to instantiate");
-        GameObject p = Instantiate(player, position, rotation);
-        p.name = userJSON.name;
-    }
+    
 
     void OnOtherPlayerDisconnected(string data)
     {
         UserJson userJson = UserJson.CreateFromJSON(data);
         Destroy(GameObject.Find(userJson.name));
+        _nonLocalPlayersDict.Remove(userJson.name);
+        _menuManagerComponent.DeleteUserFromLobby(userJson.name);
     }
 
 
@@ -209,23 +275,25 @@ public class NetworkManager : MonoBehaviour
     {
         Debug.Log("+++++++ OnplayerMove +++");
         UserJson userJson = UserJson.CreateFromJSON(data);
-        Vector2 movement = new Vector2(userJson.movement[0], userJson.movement[1]);
-        Quaternion rotation = Quaternion.Euler(userJson.rotation[0],userJson.rotation[1],userJson.rotation[2]);
-        Vector3 position = new Vector3(userJson.position[0], userJson.position[1], userJson.position[2]);
         if (userJson.name.Equals(_currentUser.name))
         {
             return;
         }
-        GameObject p = GameObject.Find(userJson.name);
-        if (p != null)
+        Vector2 movement = new Vector2(userJson.movement[0], userJson.movement[1]);
+        Quaternion rotation = Quaternion.Euler(userJson.rotation[0],userJson.rotation[1],userJson.rotation[2]);
+        Vector3 position = new Vector3(userJson.position[0], userJson.position[1], userJson.position[2]);
+        // GameObject p = GameObject.Find(userJson.name);
+        if (_nonLocalPlayersDict.ContainsKey(userJson.name))
         {
-           ThirdPersonMovement thirdMove =  p.GetComponentInChildren<ThirdPersonMovement>();
-           thirdMove.HandleOtherPlayerMovement(movement, rotation, position);
+            GameObject p = _nonLocalPlayersDict[userJson.name];
+            if (p != null) {
+                ThirdPersonMovement thirdMove =  p.GetComponentInChildren<ThirdPersonMovement>(); 
+                thirdMove.HandleOtherPlayerMovement(movement, rotation, position);
+            }else {
+                Debug.Log("--------- Couldn't find Player ( " + userJson.name+" ) to move");
+            }
         }
-        else
-        {
-            Debug.Log("--------- Couln't find Player ( " + userJson.name+" ) to move");
-        }
+        
     }
 
     void OnPlayerJump(string data)
@@ -280,6 +348,11 @@ public class NetworkManager : MonoBehaviour
                 PointJson pointJSON = new PointJson(playerSpawnPoint);
                 playerSpawnPoints.Add(pointJSON);
             }
+        }
+
+        public PlayerJson(string na)
+        {
+            name = na;
         }
     }
 
@@ -409,6 +482,7 @@ public class NetworkManager : MonoBehaviour
         }
     }
     #endregion
+    
     // To help with the limitations of JsonUtility
     public static class JsonHelper
     {
@@ -437,6 +511,19 @@ public class NetworkManager : MonoBehaviour
         private class Wrapper<T>
         {
             public T[] Items;
+        }
+    }
+    
+    public static void Shuffle<T>(List<T> list)
+    {
+        Random rng = new Random();
+        int n = list.Count;
+
+        while (n > 1)
+        {
+            n--;
+            int k = rng.Next(n + 1);
+            (list[k], list[n]) = (list[n], list[k]);
         }
     }
 }

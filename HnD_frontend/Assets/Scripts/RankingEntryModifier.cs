@@ -18,4 +18,9 @@ public class RankingEntryModifier : MonoBehaviour
         username.text = na;
         score.text = sc;
     }
+
+    public void AddValues(string na)
+    {
+        username.text = na;
+    }
 }

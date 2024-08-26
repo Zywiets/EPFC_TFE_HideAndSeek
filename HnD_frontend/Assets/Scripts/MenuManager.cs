@@ -1,10 +1,7 @@
-using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using TMPro;
 using UnityEngine;
-using UnityEngine.Serialization;
 
 public class MenuManager : MonoBehaviour
 {
@@ -12,6 +9,7 @@ public class MenuManager : MonoBehaviour
    [SerializeField] private GameObject optionsMenuPanel;
    [SerializeField] private GameObject registerPanel;
    [SerializeField] private GameObject rankingsPanel;
+   [SerializeField] private GameObject lobbyPanel;
    
    private GameObject _currentPanel;
    
@@ -37,11 +35,18 @@ public class MenuManager : MonoBehaviour
    private const string SignUpPasswordConfirm = "Confirm Password be the same as the password";
 
    private const string EmailPattern = @"^[^@\s]+@[^@\s]+\.(com|net|org|gov)$";
+   private Hash128 _hash;
+
+   private Dictionary<string,GameObject> _lobbyEntries = new Dictionary<string,GameObject>();
+
+   [SerializeField] private Transform lobbyContentContainer;
+   [SerializeField] private GameObject lobbyEntryTemplate;
    
    private NetworkManager _networkManager;
 
    private void Start()
    {
+      ClearHash();
       GetNetworkManager();
       SetPanel(signInPanel);
    }
@@ -83,6 +88,11 @@ public class MenuManager : MonoBehaviour
       _networkManager.SignOut();
    }
 
+   public void SetLobbyPanel()
+   {
+      SetPanel(lobbyPanel);
+   }
+
    public void SetRankingsPanel()
    {
       SetPanel(rankingsPanel);
@@ -102,8 +112,11 @@ public class MenuManager : MonoBehaviour
    public void CheckUsernamePassword()
    {
       if (_isCheckingUserPass) return;
+      _hash.Append(_signInPassword);
+      _signInPassword = _hash.ToString();
       _networkManager.CheckSignIn(_signInUsername, _signInPassword);
       _isCheckingUserPass = true;
+      ClearHash();
    }
 
    public void SetSignInErrorMessage()
@@ -188,6 +201,34 @@ public class MenuManager : MonoBehaviour
       }
    }
 
+   public void AddToLobby(string player)
+   {
+      if (_lobbyEntries.ContainsKey(player)) return; 
+      GameObject entry = Instantiate(lobbyEntryTemplate, lobbyContentContainer, false);
+      Debug.Log("Added the user to the lobby : "+ player + "    *************");
+      RankingEntryModifier rankEnt = entry.GetComponent<RankingEntryModifier>();
+      rankEnt.AddValues(player);
+      entry.gameObject.SetActive(true);
+      _lobbyEntries.Add(player, entry);
+   }
+   
+   public void AddCurrentUserToLobby()
+   {
+      GameObject entry = Instantiate(lobbyEntryTemplate, lobbyContentContainer, false);
+      Debug.Log("Added the Currentuser to the lobby : "+ _signInUsername + "    *************");
+      RankingEntryModifier lobEnt = entry.GetComponent<RankingEntryModifier>();
+      lobEnt.AddValues(_signInUsername);
+      entry.gameObject.SetActive(true);
+   }
+
+   public void DeleteUserFromLobby(string player)
+   {
+      GameObject entry = _lobbyEntries[player];
+      _lobbyEntries.Remove(player);
+      Destroy(entry);
+   }
+   
+
    public void SendSignUpForm()
    {
       Debug.Log("--------- signUpForm");
@@ -195,12 +236,24 @@ public class MenuManager : MonoBehaviour
       {
          if (_networkManager)
          {
+            _hash.Append(_registerPassword);
+            _registerPassword = _hash.ToString();
             _networkManager.SendFormToDB(_registerUsername, _email, _registerPassword);
+            ClearHash();
          }
          else
          {
-            Debug.Log("Le _networkManger est null ");
+            Debug.Log("Le _networkManger est null dans le MenuManager");
          }
       }
+   }
+
+   private void ClearHash()
+   {
+      _hash = new Hash128();
+      _hash.Append(27);
+      _hash.Append(19.0f);
+      _hash.Append("Hello");
+      _hash.Append(new int[] {1, 2, 3, 4, 5});
    }
 }
