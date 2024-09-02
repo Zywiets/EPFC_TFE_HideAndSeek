@@ -10,6 +10,7 @@ public class MenuManager : MonoBehaviour
    [SerializeField] private GameObject registerPanel;
    [SerializeField] private GameObject rankingsPanel;
    [SerializeField] private GameObject lobbyPanel;
+   [SerializeField] private GameObject endGameScorePanel;
    
    private GameObject _currentPanel;
    
@@ -41,6 +42,11 @@ public class MenuManager : MonoBehaviour
 
    [SerializeField] private Transform lobbyContentContainer;
    [SerializeField] private GameObject lobbyEntryTemplate;
+
+   private Dictionary<string, GameObject> _endGameScoreEntries = new Dictionary<string, GameObject>();
+
+   [SerializeField] private Transform endGameScoreContainer;
+   [SerializeField] private GameObject endGameScoreTemplate;
    
    private NetworkManager _networkManager;
 
@@ -53,14 +59,13 @@ public class MenuManager : MonoBehaviour
 
    private void GetNetworkManager()
    {
-      GameObject networkManagerObject = GameObject.Find("Network Manager");
+      GameObject networkManagerObject = GameObject.FindWithTag("Network Manager");
       if (networkManagerObject)
       {
-         Debug.Log("--------- networkManagerObject");
          _networkManager = networkManagerObject.GetComponent<NetworkManager>();
          if (_networkManager == null)
          {
-            Debug.Log("Le _networkManger est null ");
+            Debug.Log("Le _networkManger est null dans le menuManager Component");
          }
       }
    }
@@ -97,8 +102,7 @@ public class MenuManager : MonoBehaviour
    {
       SetPanel(rankingsPanel);
    }
-
-
+   
    public void SetSignInUsername(string u)
    {
       _signInUsername = u;
@@ -201,6 +205,15 @@ public class MenuManager : MonoBehaviour
       }
    }
 
+   public void AddToEndGameScore()
+   {
+      for (int i = 0; i < 5; ++i)
+      {
+         GameObject score = Instantiate(endGameScoreTemplate, endGameScoreContainer);
+         var prevPos = score.transform.position;
+         score.transform.position = new Vector3(prevPos.x, (prevPos.y )- 50.0f * i);
+      }
+   }
    public void AddToLobby(string player)
    {
       if (_lobbyEntries.ContainsKey(player)) return; 

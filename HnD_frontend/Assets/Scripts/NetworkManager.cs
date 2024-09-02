@@ -20,20 +20,27 @@ public class NetworkManager : MonoBehaviour
     public List<GameObject> playerSpawnPoints;
     private UserJson _currentUser;
     private SignUpFormJson _signUpForm;
-    private Dictionary<string,GameObject> _nonLocalPlayersDict = new Dictionary<string, GameObject>();
+    private Dictionary<string,GameObject> _playersGameObjectDict = new Dictionary<string, GameObject>();
     private List<string> _nonLocalPlayersNames = new List<string>();
     [SerializeField] private GameObject joinGameCanvas;
     [SerializeField] private GameObject startGameButton;
     private MenuManager _menuManagerComponent;
 
-    private GameObject _localPlayerGameObject;
+    private GameObject _playerGameObject;
     private PlayerRole _localPlayerRoleComp;
+    private InGameMenuManager _localPlayerInGameMenuManager;
     private bool _isSignedIn;
     private bool _isLobbyHost;
 
     private Dictionary<string, double> _scorebord = new Dictionary<string, double>();
     private List<string> _toBeSeekerList = new List<string>();
-    private int _roundCompt;
+    private int _roundCompt = 0;
+    private int _numOfSeekers;
+    private List<UserJson> _playersPlayingList = new List<UserJson>();
+
+    private Vector3 _waitingPosition = new Vector3(-27, 5, -20);
+
+    [SerializeField] private GameObject _waitingZone;
     // private void Awake()
     // {
     //     if (Instance == null)
@@ -54,6 +61,7 @@ public class NetworkManager : MonoBehaviour
         // subscribe to all the various websocket events  
         _sioCom.Instance.On("connect", (payload) => { Debug.Log(payload+"     ***** LOCAL: Connected "+ _sioCom.Instance.SocketID+"  *****"); });
         _sioCom.Instance.On("play", OnPlay);
+        _sioCom.Instance.On("start round", OnStartRound);
         _sioCom.Instance.On("other player connected", OnOtherPlayerConnected);
         _sioCom.Instance.On("other player disconnected", OnOtherPlayerDisconnected);
         _sioCom.Instance.On("player move", OnPlayerMove);
@@ -64,6 +72,7 @@ public class NetworkManager : MonoBehaviour
         _sioCom.Instance.On("sign up", OnSignUp);
         _sioCom.Instance.On("lobby host", OnLobbyHost);
         _sioCom.Instance.On("rankings", OnRankingsReceived);
+        _sioCom.Instance.On("started seeking", OnSeekerReleased);
         _sioCom.Instance.Connect();
     }
 
@@ -74,7 +83,6 @@ public class NetworkManager : MonoBehaviour
         PlayerJson playAndSpawns = new PlayerJson(_currentUser.name, playerSpawnPoints);
         string data = JsonUtility.ToJson(playAndSpawns);
         _sioCom.Instance.Emit("play", data, false);
-        joinGameCanvas.gameObject.SetActive(false);
     }
     private IEnumerator ConnectToServer()
     {
@@ -138,6 +146,26 @@ public class NetworkManager : MonoBehaviour
         _sioCom.Instance.Emit("player move", data, false);
     }
 
+    public void StartSeekingTimers()
+    {
+        string data = _currentUser.name;
+        _sioCom.Instance.Emit("started seeking", data, true);
+        _waitingZone.SetActive(false);
+    }
+
+    public void HasFinishedHiding()
+    {
+        _sioCom.Instance.Emit("finished hiding");
+        OnStartRound("f");
+        
+        
+    }
+
+    public void HasBeenFound() {
+        string data = _currentUser.name;
+        _sioCom.Instance.Emit("has been found", data, true);
+    }
+
     public void CommandJump()
     {
         string data = _currentUser.ToString();
@@ -188,35 +216,63 @@ public class NetworkManager : MonoBehaviour
     }
     void OnPlay(string data)
     {
+        joinGameCanvas.gameObject.SetActive(false);
         Debug.Log("++++you joined OnPlay function ++++");
         UserJson[] usersJson = JsonHelper.FromJson<UserJson>(data);
-        List<UserJson> playersPlayingList = new List<UserJson>(usersJson);
-        //_gameManagerComponent.SetPlayerScorebord(playersPlayingList);
+        _playersPlayingList = new List<UserJson>(usersJson);
+        StartRound();
         
-        foreach (UserJson plyrs in playersPlayingList)
+    }
+
+    void OnStartRound(string data)
+    {
+        RemoveAllPlayersGameObject();
+        if (_roundCompt < _playersPlayingList.Count)
         {
+            _waitingZone.SetActive(true);
+            StartRound();
+        }
+        else
+        {
+            //send score and set score scene
+            
+            Debug.Log("\n The game has ended");
+        }
+    }
+
+    private void StartRound()
+    {
+        for(int i = 0; i < _playersPlayingList.Count; ++i)
+        {
+            UserJson plyrs = _playersPlayingList[i];
             Vector3 position = new Vector3(plyrs.position[0], plyrs.position[1], plyrs.position[2]);
             Quaternion rotation = Quaternion.Euler(0,0,0);
+            _playerGameObject = Instantiate(plyrs.name.Equals(_currentUser.name) ? localplayerGameObject : nonLocalPlayerGameObject, i == _roundCompt ? _waitingPosition : position, rotation);
+            _playerGameObject.name = plyrs.name;
+            _playersGameObjectDict.Add(_playerGameObject.name, _playerGameObject);
             if (plyrs.name.Equals(_currentUser.name))
             {
-                _localPlayerGameObject = Instantiate(localplayerGameObject, position, rotation);
-                _localPlayerRoleComp = _localPlayerGameObject.GetComponent<PlayerRole>();
+                _localPlayerRoleComp = _playerGameObject.GetComponent<PlayerRole>();
+                _localPlayerInGameMenuManager = _playerGameObject.GetComponentInChildren<InGameMenuManager>();
                 _localPlayerRoleComp.ChangeLocalPlayerStatus();
-                CinemachineFreeLook cameraPriority = _localPlayerGameObject.GetComponentInChildren<CinemachineFreeLook>();
+                CinemachineFreeLook cameraPriority = _playerGameObject.GetComponentInChildren<CinemachineFreeLook>();
                 cameraPriority.Priority = 10;
-                _localPlayerGameObject.name = plyrs.name;
             }
-            else
-            {
-                GameObject spawnedPlayerGameObject = Instantiate(nonLocalPlayerGameObject, position, rotation);
-                spawnedPlayerGameObject.name = plyrs.name;
-                _nonLocalPlayersDict.Add(spawnedPlayerGameObject.name, spawnedPlayerGameObject);
-            }
-            _scorebord.Add(plyrs.name, 0);
+            // _scorebord.Add(plyrs.name, 0);
             _toBeSeekerList.Add(plyrs.name);
+            if (i == _roundCompt) SetSeekerInNewGame();
         }
-        
+        ++_roundCompt;
+    }
 
+    private void RemoveAllPlayersGameObject()
+    {
+        foreach (var key in new List<string>(_playersGameObjectDict.Keys)) {
+            GameObject obj = _playersGameObjectDict[key];
+            Destroy(obj);
+            _playersGameObjectDict.Remove(key);
+        }
+        _playersGameObjectDict.Clear();
     }
     void OnOtherPlayerConnected(string data)
         {
@@ -234,7 +290,7 @@ public class NetworkManager : MonoBehaviour
             print("someone managed to instantiate");
             GameObject p = Instantiate(nonLocalPlayerGameObject, position, rotation);
             p.name = userJson.name;
-            _nonLocalPlayersDict.Add(p.name, p);
+            _playersGameObjectDict.Add(p.name, p);
         }
     
     
@@ -243,6 +299,12 @@ public class NetworkManager : MonoBehaviour
     {
         startGameButton.SetActive(true);
         _isLobbyHost = true;
+    }
+
+    void OnSeekerReleased(string data)
+    {
+        _localPlayerInGameMenuManager.SetHidingTimer();
+        _waitingZone.SetActive(false);
     }
     void OnRankingsReceived(string data)
     {
@@ -266,14 +328,14 @@ public class NetworkManager : MonoBehaviour
     {
         UserJson userJson = UserJson.CreateFromJSON(data);
         Destroy(GameObject.Find(userJson.name));
-        _nonLocalPlayersDict.Remove(userJson.name);
+        _playersGameObjectDict.Remove(userJson.name);
         _menuManagerComponent.DeleteUserFromLobby(userJson.name);
     }
 
 
     void OnPlayerMove(string data)
     {
-        Debug.Log("+++++++ OnplayerMove +++");
+        Debug.Log("+++++++ OnplayerMove +++"+ data);
         UserJson userJson = UserJson.CreateFromJSON(data);
         if (userJson.name.Equals(_currentUser.name))
         {
@@ -283,9 +345,9 @@ public class NetworkManager : MonoBehaviour
         Quaternion rotation = Quaternion.Euler(userJson.rotation[0],userJson.rotation[1],userJson.rotation[2]);
         Vector3 position = new Vector3(userJson.position[0], userJson.position[1], userJson.position[2]);
         // GameObject p = GameObject.Find(userJson.name);
-        if (_nonLocalPlayersDict.ContainsKey(userJson.name))
+        if (_playersGameObjectDict.ContainsKey(userJson.name))
         {
-            GameObject p = _nonLocalPlayersDict[userJson.name];
+            GameObject p = _playersGameObjectDict[userJson.name];
             if (p != null) {
                 ThirdPersonMovement thirdMove =  p.GetComponentInChildren<ThirdPersonMovement>(); 
                 thirdMove.HandleOtherPlayerMovement(movement, rotation, position);
@@ -330,6 +392,23 @@ public class NetworkManager : MonoBehaviour
     }
 
     #endregion
+
+    private void SetSeekerInNewGame()
+    {
+        string seekerName = _toBeSeekerList[_roundCompt];
+        _numOfSeekers = 1;
+        if (seekerName.Equals(_currentUser.name))
+        {
+            _localPlayerRoleComp.SetSeekerMaterial();
+            _localPlayerInGameMenuManager.SetWaitingTimer();
+        }
+        else
+        {
+            GameObject seeker = _playersGameObjectDict[seekerName];
+            PlayerRole seekerRole = seeker.GetComponent<PlayerRole>();
+            seekerRole.SetSeekerMaterial();
+        }
+    }
 
     #region JSONMessageClasses
     

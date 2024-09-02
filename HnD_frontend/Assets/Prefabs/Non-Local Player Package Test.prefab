@@ -47,6 +47,10 @@ MonoBehaviour:
   seekerAvatar: {fileID: 5381044245335691273}
   thirdPersonCamera: {fileID: 5381044245135035713}
   playerCamera: {fileID: 0}
+  _bodyOfAvatar: {fileID: 0}
+  _seekerMaterial: {fileID: 0}
+  _hiderMaterial: {fileID: 0}
+  _rendererAvatar: {fileID: 0}
 --- !u!1 &5381044244603599695
 GameObject:
   m_ObjectHideFlags: 0
@@ -981,6 +985,10 @@ MonoBehaviour:
   seekerAvatar: {fileID: 5381044245335691273}
   thirdPersonCamera: {fileID: 5381044245135035713}
   playerCamera: {fileID: 5381044246081838903}
+  _bodyOfAvatar: {fileID: 5381044245838903874}
+  _seekerMaterial: {fileID: 2100000, guid: fcb5a9ca924950a418a79495fe40b978, type: 2}
+  _hiderMaterial: {fileID: 7325046090497753323, guid: 15a211424f8711448bebb0dc7847eb42, type: 3}
+  _rendererAvatar: {fileID: 5381044245838903876}
 --- !u!1 &5381044245157039974
 GameObject:
   m_ObjectHideFlags: 0

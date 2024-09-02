@@ -24,11 +24,11 @@ CREATE TABLE score (
 );
 
 INSERT INTO users (username, email, password) VALUES
-('admin','admin@admin.com','admin'),
-('test','test@test.com','test'),
-('MLGProSniper', 'ItadoriTimothée12@gmail.com', 'Password1+'),
-('ToxicTrollKing', 'MichelPlumart@hotmail.com', 'Password2+'),
-('xXDarkLord70Xx', 'ShakiraFan1984@star-co.net.kp', 'TrueLeader4+');
+('admin','admin@admin.com','f3d5a893b56d7acdb3d92475406b622d'), /* admin*/
+('test','test@test.com','04ee25ca867010281617898e30a90fbf'), /*test*/
+('MLGProSniper', 'ItadoriTimothée12@gmail.com', '7390675469f427512e7fb25a0522711a'), /* Password1+ */
+('ToxicTrollKing', 'MichelPlumart@hotmail.com', '9074f9fd5a8ed9f94cd764b9e405ac0b'), /* Password2+ */
+('xXDarkLord70Xx', 'ShakiraFan1984@star-co.net.kp', '6fd4791f5ccce852f98ce3919feefcff'); /* TrueLeader4+ */
 
 INSERT INTO games (winner_id) VALUES
 (1),

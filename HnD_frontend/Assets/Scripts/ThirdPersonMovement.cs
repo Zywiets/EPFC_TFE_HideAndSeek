@@ -210,20 +210,18 @@ public class ThirdPersonMovement : MonoBehaviour
                 _animator.SetBool("IsMoving", true);
                 Vector3 moveDir = GetMoveDirection(direction);
                 controller.Move(moveDir.normalized * (speedInputed * Time.deltaTime));
-                if (isLocalPlayer) { ChangeCurrentValuePosRot(); }
             }
             else
             {
                 _animator.SetBool("IsMoving", false);
-                if (isLocalPlayer) { ChangeCurrentValuePosRot(); }
             }
         }
         else
         {
             Vector3 velocity =  GetMoveDirection(direction) * (inputMagnitude * JumpHorizontal);
             controller.Move(velocity * Time.deltaTime);
-            if (isLocalPlayer) { ChangeCurrentValuePosRot(); }
         }
+        if (isLocalPlayer) { ChangeCurrentValuePosRot(); }
     }
 
     private void ChangeCurrentValuePosRot()

@@ -14,18 +14,13 @@ server.listen(3000);
 
 var playerSpawnPoints = [];
 var clients = [];
+var lobby = [];
 var hsPlayers = [];
 
 
 app.get('/', function(req, res){
     res.send("Server is running!");
 });
-
-function HashPassword(password) {
-    const hash = crypto.createHash('sha256');
-    hash.update(password);
-    return hash.digest('hex');
-}
 
 io.on('connection', function (socket) {
         console.log(`new connection socket: ${socket.id}`);
@@ -44,6 +39,75 @@ io.on('connection', function (socket) {
                     socket.emit('other player connected', playerConnected);
                 });
             }
+        });
+
+        socket.on('join lobby', data => {
+            console.log('connect to lobby')
+
+            if(lobby.length > 0) {
+                lobby.forEach((user) =>{
+                    const lobbyPlayer = {
+                        name: user.name
+                    }
+                    socket.emit('other player in lobby', lobbyPlayer)
+                })
+            }else {
+                socket.emit("lobby host")
+            }
+            let user = { name: data.name}
+            lobby.push(user);
+            socket.broadcast.emit('other player in lobby', user)
+        })
+
+
+        socket.on('play', data => {
+            console.log('Player started playing: ', socket.id);
+
+            /*if (clients.length === 0) {
+                playerSpawnPoints = [];
+                data.playerSpawnPoints.forEach(function (_playerSpawnPoint) {
+                    let playerSpawnPoint = {
+                        position: _playerSpawnPoint.position,
+                        rotation: _playerSpawnPoint.rotation
+                    };
+                    playerSpawnPoints.push(playerSpawnPoint);
+                });
+            }
+            let index = Math.floor(Math.random() * playerSpawnPoints.length)
+            let randomSpawnPoint = playerSpawnPoints[index];
+            playerSpawnPoints.splice(index, 1)
+            currentPlayer = {   name: data.name,
+                position: randomSpawnPoint.position ? randomSpawnPoint.position : { x: 0, y: 0, z: 0 },
+                rotation: randomSpawnPoint.rotation ? randomSpawnPoint.rotation : { x: 0, y: 0, z: 0 },
+                movement: 0
+            };
+            clients.push(currentPlayer);
+            // in your game, tells you that you have joined
+            console.log(currentPlayer.name + ' emit: play: ' + JSON.stringify(currentPlayer));
+            socket.emit('play', currentPlayer);
+            socket.broadcast.emit('other player connected', currentPlayer);*/
+            playerSpawnPoints = [];
+            data.playerSpawnPoints.forEach(function (_playerSpawnPoint) {
+                let playerSpawnPoint = {
+                    position: _playerSpawnPoint.position,
+                    rotation: _playerSpawnPoint.rotation
+                };
+                playerSpawnPoints.push(playerSpawnPoint);
+            });
+            let ReadyToPlayers = [];
+            for (let i = 0; i < lobby.length; i++) {
+                let randomSpawnPoint = playerSpawnPoints[i]; // Now randomized
+                let lobPla = lobby[i];
+                let play = {
+                    name: lobPla.name,
+                    position: randomSpawnPoint.position,
+                    rotation: randomSpawnPoint.rotation,
+                    movement: 0,
+                };
+                ReadyToPlayers.push(play);
+            }
+            socket.emit('play', ReadyToPlayers)
+            socket.broadcast.emit('play', ReadyToPlayers)
         });
 
         socket.on('test', data =>{
@@ -79,14 +143,13 @@ io.on('connection', function (socket) {
             sqlCon.query("SELECT COUNT(*) as total FROM users WHERE username = ? OR ?",[data.username, data.email], function(err, result, fields){
                 if(err) throw err;
                 let tot = parseInt(result[0].total);
-                console.log("***** le total est "+ tot+" ******");
                 if(tot > 0 ) {
                     socket.emit('sign in', false);
                 }else{
                     const newUser = {
                         username : data.username,
                         email : data.email,
-                        password : HashPassword(data.password)
+                        password : data.password
                     }
                     sqlCon.query("INSERT INTO `users` SET ?", newUser, function(err, result, fields){
                         if(err) throw err;
@@ -118,34 +181,20 @@ io.on('connection', function (socket) {
             })
         })
 
-        socket.on('play', data => {
-            console.log('Player started playing: ', socket.id);
-
-            if (clients.length === 0) {
-                playerSpawnPoints = [];
-                data.playerSpawnPoints.forEach(function (_playerSpawnPoint) {
-                    var playerSpawnPoint = {
-                        position: _playerSpawnPoint.position,
-                        rotation: _playerSpawnPoint.rotation
-                    };
-                    playerSpawnPoints.push(playerSpawnPoint);
-                });
-            }
-            var randomSpawnPoint = playerSpawnPoints[Math.floor(Math.random() * playerSpawnPoints.length)];
-            currentPlayer = {   name: data.name,
-                                position: randomSpawnPoint.position ? randomSpawnPoint.position : { x: 0, y: 0, z: 0 },
-                                rotation: randomSpawnPoint.rotation ? randomSpawnPoint.rotation : { x: 0, y: 0, z: 0 },
-                                movement: 0
-            };
-            clients.push(currentPlayer);
-            // in your game, tells you that you have joined
-            console.log(currentPlayer.name + ' emit: play: ' + JSON.stringify(currentPlayer));
-            socket.emit('play', currentPlayer);
-            socket.broadcast.emit('other player connected', currentPlayer);
-        });
+        socket.on('first seeker', function(data){
+            console.log('The first seeker is being set : '+ data)
+            socket.broadcast.emit('first seeker')
+        })
+        socket.on('started seeking' ,function(data){
+            socket.broadcast.emit('started seeking')
+        })
+        socket.on('finished hiding', function(data){
+            socket.broadcast.emit('start round')
+        })
 
         socket.on('player move', function (data) {
             console.log('received: move: ' + JSON.stringify(data));
+            currentPlayer.name = data.name;
             currentPlayer.movement = data.movement;
             currentPlayer.rotation = data.rotation;
             currentPlayer.position = data.position;
