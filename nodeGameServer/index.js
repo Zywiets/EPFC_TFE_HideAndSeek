@@ -110,6 +110,31 @@ io.on('connection', function (socket) {
             socket.broadcast.emit('play', ReadyToPlayers)
         });
 
+        socket.on('empty clients', data =>{
+            const highestScore = Math.max(...data.map(player => player.score));
+            const winners = data.filter(player => player.score === highestScore).map(player => player.id);
+            let gameId = ""
+            sqlCon.query('INSERT INTO games (game_date) VALUES (NOW())', function(err, result, fields){
+                if (err) throw err;
+                gameId = result.insertId;
+                console.log('le gameId est '+gameId)
+                for (const player of data) {
+                    const userId = player.id;
+                    const score = player.score;
+                    sqlCon.query('INSERT INTO score (user_id, game_id, points) VALUES (?, ?, ?)', [userId, gameId, score]);
+                }
+
+                for (const winnerId of winners) {
+                    sqlCon.query('UPDATE score SET is_winner = TRUE WHERE game_id = ? AND user_id = ?', [gameId, winnerId]);
+                }
+            });
+
+
+
+            lobby = [];
+            console.log("emptying lobby list")
+        })
+
         socket.on('test', data =>{
             sqlCon.query("SELECT * FROM users", function(err, result, fields){
                 if (err) throw err;
@@ -132,6 +157,12 @@ io.on('connection', function (socket) {
                 console.log("le mdp de la DB", res[0].password)
                if(res[0].password === hashPass){
                    socket.emit('sign in', true)
+                   sqlCon.query("SELECT user_id FROM users WHERE username = ?", [data.username], function(err, resu, fields){
+                       if(err) throw err
+                       const userId = resu[0].user_id;
+                       socket.emit('user_id', userId)
+
+                   })
                }else{
                    socket.emit('sign in', false)
                }
@@ -188,12 +219,22 @@ io.on('connection', function (socket) {
         socket.on('started seeking' ,function(data){
             socket.broadcast.emit('started seeking')
         })
-        socket.on('finished hiding', function(data){
-            socket.broadcast.emit('start round')
+
+        socket.on('has been found', function (data){
+            socket.broadcast.emit('player found', data)
+        })
+        socket.on('round timer over', function(data){
+            socket.broadcast.emit('round over')
+        })
+        socket.on('final score', function(data){
+            let finalScore  = { name : data.name,
+            score : data.score}
+            console.log('le score broadcast est '+data.name+' '+data.score)
+            socket.broadcast.emit('player score', data)
         })
 
         socket.on('player move', function (data) {
-            console.log('received: move: ' + JSON.stringify(data));
+            //console.log('received: move: ' + JSON.stringify(data));
             currentPlayer.name = data.name;
             currentPlayer.movement = data.movement;
             currentPlayer.rotation = data.rotation;
