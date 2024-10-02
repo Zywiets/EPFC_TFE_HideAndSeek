@@ -1,8 +1,10 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using Cinemachine;
 using Firesplash.UnityAssets.SocketIO;
+using Newtonsoft.Json;
 using TMPro;
 using Unity.VisualScripting;
 using UnityEngine;
@@ -29,15 +31,19 @@ public class NetworkManager : MonoBehaviour
     private GameObject _playerGameObject;
     private PlayerRole _localPlayerRoleComp;
     private InGameMenuManager _localPlayerInGameMenuManager;
+    private string _userId;
     private bool _isSignedIn;
     private bool _isLobbyHost;
 
     private Dictionary<string, double> _scorebord = new Dictionary<string, double>();
-    private List<string> _toBeSeekerList = new List<string>();
     private int _roundCompt = 0;
     private int _numOfSeekers;
     private List<UserJson> _playersPlayingList = new List<UserJson>();
+    private List<ScoreJson> _scorersList = new List<ScoreJson>();
 
+    private float _beginTimer;
+    private float _timeSpentHiding;
+    private float _totalTimeSpentHiding;
     private Vector3 _waitingPosition = new Vector3(-27, 5, -20);
 
     [SerializeField] private GameObject _waitingZone;
@@ -61,7 +67,7 @@ public class NetworkManager : MonoBehaviour
         // subscribe to all the various websocket events  
         _sioCom.Instance.On("connect", (payload) => { Debug.Log(payload+"     ***** LOCAL: Connected "+ _sioCom.Instance.SocketID+"  *****"); });
         _sioCom.Instance.On("play", OnPlay);
-        _sioCom.Instance.On("start round", OnStartRound);
+        _sioCom.Instance.On("round over", OnStartNewRound);
         _sioCom.Instance.On("other player connected", OnOtherPlayerConnected);
         _sioCom.Instance.On("other player disconnected", OnOtherPlayerDisconnected);
         _sioCom.Instance.On("player move", OnPlayerMove);
@@ -73,12 +79,14 @@ public class NetworkManager : MonoBehaviour
         _sioCom.Instance.On("lobby host", OnLobbyHost);
         _sioCom.Instance.On("rankings", OnRankingsReceived);
         _sioCom.Instance.On("started seeking", OnSeekerReleased);
+        _sioCom.Instance.On("player found", OnSetSeeker);
+        _sioCom.Instance.On("player score", OnSetOtherPlayerFinalScore);
+        _sioCom.Instance.On("user_id", OnSetUserId);
         _sioCom.Instance.Connect();
     }
 
     public void JoinGame()
     {
-        Debug.Log("+++++++++ Le bouton join game fonctionne ++++++++");
         Shuffle(playerSpawnPoints);
         PlayerJson playAndSpawns = new PlayerJson(_currentUser.name, playerSpawnPoints);
         string data = JsonUtility.ToJson(playAndSpawns);
@@ -117,6 +125,7 @@ public class NetworkManager : MonoBehaviour
     }
 
     public void SendFormToDB(string us, string em, string pa)
+    
     {
         _signUpForm = new SignUpFormJson(us, em, pa);
         string data = JsonUtility.ToJson(_signUpForm);
@@ -150,20 +159,51 @@ public class NetworkManager : MonoBehaviour
     {
         string data = _currentUser.name;
         _sioCom.Instance.Emit("started seeking", data, true);
+        if (_isLobbyHost)
+        {
+            _localPlayerInGameMenuManager._isRoundTimerOn = true;
+        }
         _waitingZone.SetActive(false);
     }
 
-    public void HasFinishedHiding()
+    public void RoundTimerOver()
     {
-        _sioCom.Instance.Emit("finished hiding");
+        _sioCom.Instance.Emit("round timer over");
+        if (_localPlayerInGameMenuManager._isHiding)
+        {
+            _totalTimeSpentHiding += _timeSpentHiding;
+        }
         OnStartRound("f");
-        
-        
     }
 
     public void HasBeenFound() {
+        _totalTimeSpentHiding += _timeSpentHiding;
+        
         string data = _currentUser.name;
+        _localPlayerRoleComp.SetSeekerMaterial();
+        Debug.Log("Le player a été trouvé"+ _numOfSeekers +"  "+ _playersPlayingList.Count);
         _sioCom.Instance.Emit("has been found", data, true);
+        _numOfSeekers++;
+        if (_numOfSeekers >= _playersPlayingList.Count)
+        {
+            OnStartRound("l");
+            Debug.Log("Restart the round because has been found");
+        }
+    }
+
+    private void EmptyLobbyInNetwork(List<ScoreJson> scores)
+    {
+        string data = JsonConvert.SerializeObject(scores);
+        _sioCom.Instance.Emit("empty clients", data, false);
+    }
+
+    private void SendScoreToPlayers()
+    {
+        int sc = Mathf.RoundToInt(_totalTimeSpentHiding) * 10;
+        ScoreJson finalScore = new ScoreJson(_currentUser.name, sc, _userId);
+        string data = JsonUtility.ToJson(finalScore);
+        _sioCom.Instance.Emit("final score", data, false);
+        AddValueToEndScoreTable(finalScore);
     }
 
     public void CommandJump()
@@ -189,19 +229,17 @@ public class NetworkManager : MonoBehaviour
     void OnOtherPlayerInLobby(string data)
     {
         if (!_isSignedIn) return;
-        Debug.Log("other player in lobby : "+ data);
+        // Debug.Log("other player in lobby : "+ data);
         UserJson lobbyPlayer = UserJson.CreateFromJSON(data);
         if (lobbyPlayer.name.Equals(_currentUser.name)) return;
         _menuManagerComponent.AddToLobby(lobbyPlayer.name);
     }
     void OnSignIn(string data)
     {
-        Debug.Log("Recienve message from DB +++++++++++++");
         bool res = bool.Parse(data);
         _isSignedIn = res;
         if (res)
         {
-            Debug.Log("Result positive from DB ++++++++++");
             _currentUser = new UserJson(_signUpForm.username);
             _menuManagerComponent.SetOptionMenuPanel();
         }
@@ -212,55 +250,115 @@ public class NetworkManager : MonoBehaviour
     }
     void OnSignUp(string data)
     {
-        Debug.Log(data);
+        bool res = bool.Parse(data);
+        _isSignedIn = res;
+        if (res)
+        {
+            _currentUser = new UserJson(_signUpForm.username);
+            _menuManagerComponent.SetOptionMenuPanel();
+        }
     }
     void OnPlay(string data)
     {
         joinGameCanvas.gameObject.SetActive(false);
-        Debug.Log("++++you joined OnPlay function ++++");
         UserJson[] usersJson = JsonHelper.FromJson<UserJson>(data);
         _playersPlayingList = new List<UserJson>(usersJson);
         StartRound();
         
     }
 
+    void OnStartNewRound(string data)
+    {
+        if (_localPlayerInGameMenuManager._isHiding)
+        {
+            _totalTimeSpentHiding += _timeSpentHiding;
+        }
+        OnStartRound("f");
+    }
     void OnStartRound(string data)
     {
         RemoveAllPlayersGameObject();
+        
         if (_roundCompt < _playersPlayingList.Count)
         {
+            Debug.Log("Le compteur est à "+_roundCompt+" et le playersList est à "+ _playersPlayingList.Count);
             _waitingZone.SetActive(true);
             StartRound();
         }
         else
         {
             //send score and set score scene
-            
+            // Send message to DB to reset lobbyhost 
+            SendScoreToPlayers();
             Debug.Log("\n The game has ended");
         }
     }
 
+    void EndGame()
+    {
+        _playersPlayingList.Clear();
+        _playersGameObjectDict.Clear();
+        _menuManagerComponent.DeleteAllFromLobby();
+        _isLobbyHost = false;
+        _numOfSeekers = 0;
+        _roundCompt = 0;
+        _totalTimeSpentHiding = 0;
+        
+        joinGameCanvas.gameObject.SetActive(true);
+        _waitingZone.SetActive(true);
+        _menuManagerComponent.SetEndGamePanel();
+    }
+
+    void OnSetOtherPlayerFinalScore(string data)
+    {
+        Debug.Log("Le message reçu par le network pour le score est "+data);
+        ScoreJson sco = ScoreJson.CreateFromJSON(data);
+        AddValueToEndScoreTable(sco);
+    }
+
+    void AddValueToEndScoreTable(ScoreJson scorer)
+    {
+        _scorersList.Add(scorer);
+        // Debug.Log("Value added to scoreList "+scorer.name);
+        // Debug.Log("la valeur du scoreCount est "+ _scorersList.Count+ " et le _playerPLaying "+_playersPlayingList.Count);
+        if (_scorersList.Count == _playersPlayingList.Count)
+        {
+            _menuManagerComponent.AddToEndGameScore(_scorersList);
+            if (_isLobbyHost)
+            {
+                EmptyLobbyInNetwork(_scorersList);
+            }
+            _scorersList.Clear();
+            EndGame();
+        }
+    }
     private void StartRound()
     {
+        _numOfSeekers = 0;
         for(int i = 0; i < _playersPlayingList.Count; ++i)
         {
             UserJson plyrs = _playersPlayingList[i];
-            Vector3 position = new Vector3(plyrs.position[0], plyrs.position[1], plyrs.position[2]);
-            Quaternion rotation = Quaternion.Euler(0,0,0);
-            _playerGameObject = Instantiate(plyrs.name.Equals(_currentUser.name) ? localplayerGameObject : nonLocalPlayerGameObject, i == _roundCompt ? _waitingPosition : position, rotation);
-            _playerGameObject.name = plyrs.name;
-            _playersGameObjectDict.Add(_playerGameObject.name, _playerGameObject);
-            if (plyrs.name.Equals(_currentUser.name))
+            Debug.Log("le player est dans la _playerPlayinglist : "+plyrs.name);
+            if (!_playersGameObjectDict.ContainsKey(plyrs.name))
             {
-                _localPlayerRoleComp = _playerGameObject.GetComponent<PlayerRole>();
-                _localPlayerInGameMenuManager = _playerGameObject.GetComponentInChildren<InGameMenuManager>();
-                _localPlayerRoleComp.ChangeLocalPlayerStatus();
-                CinemachineFreeLook cameraPriority = _playerGameObject.GetComponentInChildren<CinemachineFreeLook>();
-                cameraPriority.Priority = 10;
+                Vector3 position = new Vector3(plyrs.position[0], plyrs.position[1], plyrs.position[2]);
+                Quaternion rotation = Quaternion.Euler(0,0,0);
+                _playerGameObject = Instantiate(plyrs.name.Equals(_currentUser.name) ? localplayerGameObject : nonLocalPlayerGameObject, i == _roundCompt ? _waitingPosition : position, rotation);
+                _playerGameObject.name = plyrs.name;
+                _playersGameObjectDict.Add(_playerGameObject.name, _playerGameObject);
+                if (plyrs.name.Equals(_currentUser.name))
+                {
+                    _localPlayerRoleComp = _playerGameObject.GetComponent<PlayerRole>();
+                    _localPlayerInGameMenuManager = _playerGameObject.GetComponentInChildren<InGameMenuManager>();
+                    _localPlayerRoleComp.ChangeLocalPlayerStatus();
+                    CinemachineFreeLook cameraPriority = _playerGameObject.GetComponentInChildren<CinemachineFreeLook>();
+                    cameraPriority.Priority = 10;
+                }
+                if (i == _roundCompt)
+                {
+                    SetSeekerInNewGame(plyrs.name);
+                }
             }
-            // _scorebord.Add(plyrs.name, 0);
-            _toBeSeekerList.Add(plyrs.name);
-            if (i == _roundCompt) SetSeekerInNewGame();
         }
         ++_roundCompt;
     }
@@ -292,9 +390,25 @@ public class NetworkManager : MonoBehaviour
             p.name = userJson.name;
             _playersGameObjectDict.Add(p.name, p);
         }
-    
-    
 
+
+    void OnSetSeeker(string data)
+    {
+        ++_numOfSeekers;
+        if (_numOfSeekers >= _playersPlayingList.Count)
+        {
+            Debug.Log("nombre max de seeker atteint");
+            OnStartRound("l");
+        }
+        else
+        {
+            Debug.Log("On set les seeker details");
+           GameObject seeker = _playersGameObjectDict[data];
+           PlayerRole seekerRole = seeker.GetComponent<PlayerRole>();
+           seekerRole.SetSeekerMaterial(); 
+        }
+        
+    }
     void OnLobbyHost(string data)
     {
         startGameButton.SetActive(true);
@@ -303,6 +417,10 @@ public class NetworkManager : MonoBehaviour
 
     void OnSeekerReleased(string data)
     {
+        if (_isLobbyHost)
+        {
+            _localPlayerInGameMenuManager._isRoundTimerOn = true;
+        }
         _localPlayerInGameMenuManager.SetHidingTimer();
         _waitingZone.SetActive(false);
     }
@@ -335,7 +453,7 @@ public class NetworkManager : MonoBehaviour
 
     void OnPlayerMove(string data)
     {
-        Debug.Log("+++++++ OnplayerMove +++"+ data);
+        //Debug.Log("+++++++ OnplayerMove +++"+ data);
         UserJson userJson = UserJson.CreateFromJSON(data);
         if (userJson.name.Equals(_currentUser.name))
         {
@@ -356,6 +474,12 @@ public class NetworkManager : MonoBehaviour
             }
         }
         
+    }
+
+    void OnSetUserId(string data)
+    {
+        _userId = data;
+        //Debug.Log("on a recu le user_id : "+_userId);
     }
 
     void OnPlayerJump(string data)
@@ -393,21 +517,31 @@ public class NetworkManager : MonoBehaviour
 
     #endregion
 
-    private void SetSeekerInNewGame()
+    private void SetSeekerInNewGame(string seekerName)
     {
-        string seekerName = _toBeSeekerList[_roundCompt];
-        _numOfSeekers = 1;
+        Debug.Log("setting the seeker "+ seekerName);
         if (seekerName.Equals(_currentUser.name))
         {
             _localPlayerRoleComp.SetSeekerMaterial();
             _localPlayerInGameMenuManager.SetWaitingTimer();
+            _localPlayerInGameMenuManager._isHiding = false;
+            _numOfSeekers++;
         }
         else
         {
-            GameObject seeker = _playersGameObjectDict[seekerName];
-            PlayerRole seekerRole = seeker.GetComponent<PlayerRole>();
-            seekerRole.SetSeekerMaterial();
+            OnSetSeeker(seekerName);
         }
+    }
+
+    public void SetBeginTimer(float time)
+    {
+        Debug.Log("le time de départ est "+ time);
+        _beginTimer = time;
+    }
+
+    public void SetTimeSpentHiding(float time)
+    {
+        _timeSpentHiding = _beginTimer - time;
     }
 
     #region JSONMessageClasses
@@ -448,6 +582,26 @@ public class NetworkManager : MonoBehaviour
         }
     }
 
+    [Serializable]
+    public class ScoreJson
+    {
+        public string name;
+        public int score;
+        public string id;
+
+        public ScoreJson(string na, int sc, string i)
+        {
+            name = na;
+            score = sc;
+            id = i;
+
+        }
+        public static ScoreJson CreateFromJSON(string data)
+        {
+            return JsonUtility.FromJson<ScoreJson>(data);
+        }
+    }
+    
     [Serializable]
     public class SignUpFormJson
     {

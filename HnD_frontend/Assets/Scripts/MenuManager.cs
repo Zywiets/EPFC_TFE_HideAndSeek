@@ -39,14 +39,14 @@ public class MenuManager : MonoBehaviour
    private Hash128 _hash;
 
    private Dictionary<string,GameObject> _lobbyEntries = new Dictionary<string,GameObject>();
+   private List<GameObject> _endGameEntries = new List<GameObject>();
 
    [SerializeField] private Transform lobbyContentContainer;
    [SerializeField] private GameObject lobbyEntryTemplate;
 
-   private Dictionary<string, GameObject> _endGameScoreEntries = new Dictionary<string, GameObject>();
-
    [SerializeField] private Transform endGameScoreContainer;
    [SerializeField] private GameObject endGameScoreTemplate;
+   private Dictionary<int, string> _endGameScores = new Dictionary<int, string>();
    
    private NetworkManager _networkManager;
 
@@ -96,6 +96,11 @@ public class MenuManager : MonoBehaviour
    public void SetLobbyPanel()
    {
       SetPanel(lobbyPanel);
+   }
+
+   public void SetEndGamePanel()
+   {
+      SetPanel(endGameScorePanel);
    }
 
    public void SetRankingsPanel()
@@ -205,13 +210,35 @@ public class MenuManager : MonoBehaviour
       }
    }
 
-   public void AddToEndGameScore()
+   public void AddToEndGameScore(List<NetworkManager.ScoreJson> entries)
    {
-      for (int i = 0; i < 5; ++i)
+      entries.Sort((a, b) => b.score.CompareTo(a.score));
+
+      int rank = 1;
+      for (int i = 0; i < entries.Count; ++i)
       {
-         GameObject score = Instantiate(endGameScoreTemplate, endGameScoreContainer);
-         var prevPos = score.transform.position;
-         score.transform.position = new Vector3(prevPos.x, (prevPos.y )- 50.0f * i);
+         var scoreValues = entries[i];
+         if (i > 0 && entries[i].score != entries[i - 1].score)
+         {
+            rank = i + 1; 
+         }
+         GameObject scoreEntry = Instantiate(endGameScoreTemplate, endGameScoreContainer);
+         var modifyScoreEntry = scoreEntry.GetComponent<RankingEntryModifier>();
+         modifyScoreEntry.AddValues(rank.ToString(), scoreValues.name, scoreValues.score.ToString());
+         var prevPos = scoreEntry.transform.position;
+         scoreEntry.transform.position = new Vector3(prevPos.x, prevPos.y - 50.0f * i);
+         _endGameEntries.Add(scoreEntry);
+      }
+   }
+   
+   
+   public void DeleteAllFromEndGameScore()
+   {
+      var entriesToRemove = new List<GameObject>(_endGameEntries);
+      foreach (var entry in entriesToRemove)
+      {
+         _endGameEntries.Remove(entry);
+         Destroy(entry);
       }
    }
    public void AddToLobby(string player)
@@ -231,14 +258,26 @@ public class MenuManager : MonoBehaviour
       Debug.Log("Added the Currentuser to the lobby : "+ _signInUsername + "    *************");
       RankingEntryModifier lobEnt = entry.GetComponent<RankingEntryModifier>();
       lobEnt.AddValues(_signInUsername);
+      _lobbyEntries.Add(_signInUsername, entry);
       entry.gameObject.SetActive(true);
    }
 
    public void DeleteUserFromLobby(string player)
    {
       GameObject entry = _lobbyEntries[player];
-      _lobbyEntries.Remove(player);
       Destroy(entry);
+      _lobbyEntries.Remove(player);
+   }
+
+   public void DeleteAllFromLobby()
+   {
+      List<string> playersToRemove = new List<string>(_lobbyEntries.Keys);
+      // Debug.Log("players to remove "+playersToRemove.Count);
+      foreach (var entry in playersToRemove)
+      {
+         DeleteUserFromLobby(entry);
+      }
+      _lobbyEntries.Clear();
    }
    
 

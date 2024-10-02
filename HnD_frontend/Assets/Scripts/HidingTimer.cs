@@ -11,18 +11,7 @@ public class HidingTimer : MonoBehaviour
     public TextMeshProUGUI timerText;
     private float _startTime;
     private bool _isNotTouched;
-    private void OnDisable()
-    {
-        HiderCollision.Instance.touchedEvent.RemoveListener(StopTimer);
-    }
 
-    
-    void Start()
-    {
-        // Needs to be in start to be sure hideCollision exists already
-        HiderCollision.Instance.touchedEvent.AddListener(StopTimer);
-        StartTimer();
-    }
     
     void Update()
     {

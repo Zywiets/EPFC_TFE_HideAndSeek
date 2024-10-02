@@ -185,7 +185,7 @@ public class ThirdPersonMovement : MonoBehaviour
     
     public void HandleOtherPlayerMovement(Vector2 move, Quaternion newRotation, Vector3 position)
     {
-        Debug.Log("++++++++++++ received rotation parameters : " + move +" from " + newRotation);
+        //Debug.Log("++++++++++++ received rotation parameters : " + move +" from " + newRotation);
         if (transform.rotation != newRotation)
         {
             transform.rotation = newRotation;

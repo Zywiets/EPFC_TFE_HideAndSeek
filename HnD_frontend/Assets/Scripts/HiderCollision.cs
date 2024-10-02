@@ -7,28 +7,17 @@ using UnityEngine.Events;
 public class HiderCollision : MonoBehaviour
 {
     private const string SeekerName = "Seeker";
+    public bool isSeeker;
 
-    public static HiderCollision Instance;
-    public UnityEvent touchedEvent = new UnityEvent();
+    [SerializeField] private InGameMenuManager _inGameMenu;
 
-    private void Awake()
+    private void OnCollisionEnter(Collision collision)
     {
-        if (Instance == null)
+        Debug.Log("Collision detected in COLLIDER");
+        if (collision.gameObject.CompareTag(SeekerName) && !gameObject.CompareTag(SeekerName))
         {
-            Instance = this;
-            Debug.Log("L'instance n'est pas nulle");
-            DontDestroyOnLoad(gameObject);
-        }
-        else
-        {
-            Destroy(gameObject);
+            Debug.Log("Contact avec un objet dans le COLLIDER: " + collision.gameObject.tag);
+            _inGameMenu.OnCollisionWithSeeker();
         }
     }
-    private void OnTriggerEnter(Collider other)
-    {
-        if (!other.gameObject.CompareTag(SeekerName)) return;
-        Debug.Log("We are touched");
-        touchedEvent.Invoke();
-    }
-    
 }

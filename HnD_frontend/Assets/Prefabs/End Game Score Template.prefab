@@ -144,6 +144,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1364751751797393257}
+  - component: {fileID: 4586151868819488252}
   m_Layer: 0
   m_Name: End Game Score Template
   m_TagString: Untagged
@@ -169,6 +170,21 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &4586151868819488252
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5252093230571543935}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3b4fffa78a072cc45a7bcc9032c5cb67, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  rank: {fileID: 4582142180856593810}
+  username: {fileID: 3534347703221731738}
+  score: {fileID: 5972703815086954651}
 --- !u!1 &6386305563787444740
 GameObject:
   m_ObjectHideFlags: 0

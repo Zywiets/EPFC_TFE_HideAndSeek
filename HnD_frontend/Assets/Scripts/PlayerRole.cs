@@ -8,55 +8,29 @@ using UnityEngine.Serialization;
 public class PlayerRole : MonoBehaviour
 {
     [SerializeField] private GameObject seekerAvatar;
-    [SerializeField] private GameObject thirdPersonCamera;
     [SerializeField] private GameObject playerCamera;
-    
-    private CinemachineFreeLook _pCam;
-    private Transform _tFollowTarget;
 
-    [SerializeField] private GameObject _bodyOfAvatar;
     [SerializeField] private Material _seekerMaterial;
     [SerializeField] private Material _hiderMaterial;
     [SerializeField] private SkinnedMeshRenderer _rendererAvatar;
+    
+    private const string SeekerName = "Seeker";
 
     private void Start()
     {
         seekerAvatar.SetActive(true);
-        _pCam = thirdPersonCamera.GetComponent<CinemachineFreeLook>();
-        // HiderCollision.Instance.touchedEvent.AddListener(ChangeToHider);
     }
 
-    private void ChangeToHider()
-    {
-        // hiderAvatar.SetActive(false);
-        // var impactPosition = hiderAvatar.transform.position;
-        // Debug.Log("La position du hider est " + impactPosition);
-        // SetSeekerTargetFollow(impactPosition);
-        // seekerAvatar.SetActive(true); //this line was on 27 but the position change didn't work
-    }
-
-    private void SetSeekerTargetFollow(Vector3 impPos)
-    {
-        Debug.Log("SetSeekerTargetFollow called with position: " + impPos);
-        _tFollowTarget = seekerAvatar.transform;
-        _pCam.Follow = _tFollowTarget;
-        _pCam.LookAt = _tFollowTarget;
-        seekerAvatar.transform.position = impPos;
-        var v = seekerAvatar.transform.position;
-        Debug.Log("seekerAvatar position set to: " + v);
-    }
-    
     public void ChangeLocalPlayerStatus()
     {
         // Only called when Local player connect to this game
-        // ThirdPersonMovement thirdHider = hiderAvatar.GetComponent<ThirdPersonMovement>();
         ThirdPersonMovement thirdSeeker = seekerAvatar.GetComponent<ThirdPersonMovement>();
 
         // Changing commands to be only responsive if local user
         thirdSeeker.isLocalPlayer = !thirdSeeker.isLocalPlayer;
         playerCamera.SetActive(true);
     }
-
+    
     public void SetHiderMaterial()
     {
         _rendererAvatar.material = _hiderMaterial;
@@ -64,13 +38,9 @@ public class PlayerRole : MonoBehaviour
 
     public void SetSeekerMaterial()
     {
-        if (_rendererAvatar != null)
-        {
-            _rendererAvatar.material = _seekerMaterial;
-        }
-        else
-        {
-            Debug.Log("rendereravatar is null 000000000000");
-        }        
+        Debug.Log("Setting ht e sekker skin");
+        _rendererAvatar.material = _seekerMaterial;
+        seekerAvatar.tag = SeekerName;
     }
+
 }
