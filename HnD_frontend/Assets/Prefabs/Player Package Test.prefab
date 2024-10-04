@@ -378,7 +378,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _timeLeftWaiting: 1
-  _timeLeftHiding: 40
+  _timeLeftHiding: 900
   _isHiding: 0
   _isRoundTimerOn: 0
   _waitTimer: {fileID: 1405402953433487744}
@@ -1048,6 +1048,7 @@ GameObject:
   - component: {fileID: 5381044245135035715}
   - component: {fileID: 5381044245135035714}
   - component: {fileID: 5381044245135035716}
+  - component: {fileID: 5321621597817948490}
   m_Layer: 0
   m_Name: Third Person Camera
   m_TagString: Untagged
@@ -1207,6 +1208,14 @@ MonoBehaviour:
   m_Damping: 2
   m_DampingWhenOccluded: 0
   m_OptimalTargetDistance: 0
+--- !u!81 &5321621597817948490
+AudioListener:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5381044245135035713}
+  m_Enabled: 1
 --- !u!1 &5381044245145532518
 GameObject:
   m_ObjectHideFlags: 0
@@ -1531,6 +1540,7 @@ GameObject:
   - component: {fileID: 8666519623061393301}
   - component: {fileID: 812762505826591168}
   - component: {fileID: 3706529942517308714}
+  - component: {fileID: 4692262181341440247}
   m_Layer: 3
   m_Name: 'Seeker '
   m_TagString: Untagged
@@ -1618,6 +1628,7 @@ MonoBehaviour:
   groundMask:
     serializedVersion: 2
     m_Bits: 8
+  audioSource: {fileID: 0}
   isLocalPlayer: 0
 --- !u!54 &5381044245335691278
 Rigidbody:
@@ -1676,6 +1687,14 @@ BoxCollider:
   serializedVersion: 2
   m_Size: {x: 1, y: 2, z: 1}
   m_Center: {x: 0, y: 1, z: 0.2}
+--- !u!81 &4692262181341440247
+AudioListener:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5381044245335691273}
+  m_Enabled: 1
 --- !u!1 &5381044245351601447
 GameObject:
   m_ObjectHideFlags: 0
@@ -2749,7 +2768,6 @@ GameObject:
   m_Component:
   - component: {fileID: 5381044246081838904}
   - component: {fileID: 5381044246081838907}
-  - component: {fileID: 5381044246081838906}
   - component: {fileID: 5381044246081838905}
   m_Layer: 0
   m_Name: Player Camera
@@ -2816,14 +2834,6 @@ Camera:
   m_OcclusionCulling: 1
   m_StereoConvergence: 10
   m_StereoSeparation: 0.022
---- !u!81 &5381044246081838906
-AudioListener:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5381044246081838903}
-  m_Enabled: 0
 --- !u!114 &5381044246081838905
 MonoBehaviour:
   m_ObjectHideFlags: 0

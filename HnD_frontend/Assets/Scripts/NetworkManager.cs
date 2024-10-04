@@ -23,9 +23,9 @@ public class NetworkManager : MonoBehaviour
     private UserJson _currentUser;
     private SignUpFormJson _signUpForm;
     private Dictionary<string,GameObject> _playersGameObjectDict = new Dictionary<string, GameObject>();
-    private List<string> _nonLocalPlayersNames = new List<string>();
     [SerializeField] private GameObject joinGameCanvas;
     [SerializeField] private GameObject startGameButton;
+    [SerializeField] private GameObject backgroundSound;
     private MenuManager _menuManagerComponent;
 
     private GameObject _playerGameObject;
@@ -45,6 +45,7 @@ public class NetworkManager : MonoBehaviour
     private float _timeSpentHiding;
     private float _totalTimeSpentHiding;
     private Vector3 _waitingPosition = new Vector3(-27, 5, -20);
+    
 
     [SerializeField] private GameObject _waitingZone;
     // private void Awake()
@@ -263,6 +264,7 @@ public class NetworkManager : MonoBehaviour
         joinGameCanvas.gameObject.SetActive(false);
         UserJson[] usersJson = JsonHelper.FromJson<UserJson>(data);
         _playersPlayingList = new List<UserJson>(usersJson);
+        backgroundSound.SetActive(false);
         StartRound();
         
     }
@@ -305,6 +307,7 @@ public class NetworkManager : MonoBehaviour
         _totalTimeSpentHiding = 0;
         
         joinGameCanvas.gameObject.SetActive(true);
+        backgroundSound.SetActive(true);
         _waitingZone.SetActive(true);
         _menuManagerComponent.SetEndGamePanel();
     }
@@ -479,7 +482,6 @@ public class NetworkManager : MonoBehaviour
     void OnSetUserId(string data)
     {
         _userId = data;
-        //Debug.Log("on a recu le user_id : "+_userId);
     }
 
     void OnPlayerJump(string data)

@@ -136,16 +136,17 @@ public class MenuManager : MonoBehaviour
    
    public void IsValidUsername(string word)
    {
+      Debug.Log("the username for signup is : "+word);
       if (word.Length < 3 || word.Length > 25)
       {
          _registerUsername = null;
          usernameError.SetText(SignUpUsernameError);
-         Debug.Log(word + " is shorter than 3 or longer than 25");
+         Debug.Log(word + "  \n "+ SignUpUsernameError);
       }
       else
       {
          _registerUsername = word;
-         usernameError.SetText("");
+         usernameError.SetText(" ");
       }
    }
    public void IsValidEmail(string word)
@@ -171,7 +172,7 @@ public class MenuManager : MonoBehaviour
          Debug.Log(word + " is shorter than 3 or longer than 25");
       }
 
-      if (!Regex.IsMatch(word, "[A,Z]"))
+      if (!Regex.IsMatch(word, "[A-Z]"))
       {
          isValid = false;
          Debug.Log(word+"doesn't have an uppercase");
@@ -283,23 +284,32 @@ public class MenuManager : MonoBehaviour
 
    public void SendSignUpForm()
    {
-      Debug.Log("--------- signUpForm");
       if (_registerUsername?.Length > 0 && _email?.Length > 0 && _registerPassword?.Length > 0 && _passwordConfirm?.Length > 0)
       {
-         if (_networkManager)
-         {
             _hash.Append(_registerPassword);
             _registerPassword = _hash.ToString();
             _networkManager.SendFormToDB(_registerUsername, _email, _registerPassword);
             ClearHash();
-         }
-         else
-         {
-            Debug.Log("Le _networkManger est null dans le MenuManager");
-         }
+            ClearSignUpForm();
       }
    }
 
+   public void GetRankingsFromDB()
+   {
+      _networkManager.GetAllRankings();
+   }
+
+   public void ClearSignUpForm()
+   {
+      usernameError.SetText("");
+      _registerUsername = null;
+      emailError.SetText("");
+      _email = null;
+      passwordError.SetText("");
+      _registerPassword = null;
+      passwordConfirmError.SetText("");
+      _passwordConfirm = null;
+   }
    private void ClearHash()
    {
       _hash = new Hash128();

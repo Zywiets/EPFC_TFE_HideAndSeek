@@ -32,8 +32,9 @@ public class ThirdPersonMovement : MonoBehaviour
     public float groundDistance = 0.4f;
     public LayerMask groundMask;
 
-    [Header("Movement animations")]
+    [Header("Movement animations & sound")]
     private Animator _animator;
+    public GameObject audioSource;
 
     [Header("Network")] 
     private NetworkManager _networkManager;
@@ -176,7 +177,7 @@ public class ThirdPersonMovement : MonoBehaviour
     private void HandleLocalPlayerMovement()
     {
         if (!isLocalPlayer) return;
-        HandleMovement();
+        HandleMovement(false);
         if (_currPosition != _oldPosition || _currRotation != _oldRotation)
         {
             _networkManager.CommandMove(_move, _currRotation, _currPosition);
@@ -193,10 +194,10 @@ public class ThirdPersonMovement : MonoBehaviour
         CheckGrounded();
         ApplyGravity();
         _move = new Vector2(move.x, move.y);
-        HandleMovement();
+        HandleMovement(true);
         transform.position = position;
     }
-    private void HandleMovement()
+    private void HandleMovement(bool otherPlayer)
     {
         Vector3 direction = new Vector3(_move.x, 0f, _move.y);
         float inputMagnitude = Mathf.Clamp01(direction.magnitude);
@@ -215,6 +216,9 @@ public class ThirdPersonMovement : MonoBehaviour
             {
                 _animator.SetBool("IsMoving", false);
             }
+            if(otherPlayer)
+            {
+                Debug.Log("activating sound");audioSource.SetActive(inputMagnitude > 0.4);}
         }
         else
         {
@@ -224,12 +228,18 @@ public class ThirdPersonMovement : MonoBehaviour
         if (isLocalPlayer) { ChangeCurrentValuePosRot(); }
     }
 
+    private void AudioSourceManager(float inputMagn)
+    {
+       
+    }
     private void ChangeCurrentValuePosRot()
     {
         var transform1 = transform;
         _currPosition = transform1.position;
         _currRotation = transform1.rotation;
     }
+    
+    
 
     // Calculates the direction the controller is pointing instead of the opposite (responding like an aeroplane if not)
     private Vector3 GetMoveDirection(Vector3 direction)
