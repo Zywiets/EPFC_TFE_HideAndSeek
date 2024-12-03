@@ -54,7 +54,7 @@ public class ThirdPersonMovement : MonoBehaviour
         _controls.Gameplay.Jump.performed += _ => HandleJump();
         _controls.Gameplay.Move.performed += ctx => _move = ctx.ReadValue<Vector2>();
         _controls.Gameplay.Move.canceled += _ => _move = Vector2.zero;
-        _controls.Gameplay.Crouch.started += _ => HandleStartCrouch();
+        _controls.Gameplay.Crouch.started += _ =>   HandleStartCrouch();
         _controls.Gameplay.Crouch.canceled += _ => HandleEndCrouch();
     }
     private void OnEnable()
@@ -228,10 +228,6 @@ public class ThirdPersonMovement : MonoBehaviour
         if (isLocalPlayer) { ChangeCurrentValuePosRot(); }
     }
 
-    private void AudioSourceManager(float inputMagn)
-    {
-       
-    }
     private void ChangeCurrentValuePosRot()
     {
         var transform1 = transform;
