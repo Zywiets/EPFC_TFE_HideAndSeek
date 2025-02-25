@@ -15,6 +15,8 @@ server.listen(3000);
 var playerSpawnPoints = [];
 var clients = [];
 var lobby = [];
+var lobbies = {};
+let hosts = [];
 var hsPlayers = [];
 
 
@@ -41,6 +43,37 @@ io.on('connection', function (socket) {
             }
         });
 
+        socket.on('get lobbies', data => {
+            socket.emit('hosts data', hosts);
+        })
+
+        socket.on('new lobby host', data => {
+            const lobbyId = data.lobby
+            const player = { lobby: lobbyId, name: data.name };
+            if (!Array.isArray(lobbies[lobbyId])) {
+                lobbies[lobbyId] = [];
+            }
+            lobbies[lobbyId].push(player);
+            hosts.push(lobbyId);
+            socket.broadcast.emit('new host', data);
+            socket.join(lobbyId);
+        })
+
+        socket.on('lobby chosen', (data) => {
+            let lobbyId = data.lobby;
+            if (!lobbyId) {
+                return;
+            }
+            if (!lobbies[lobbyId]) {
+                lobbies[lobbyId] = []; // Ensure the lobby array exists
+            }
+            const player = { lobby: lobbyId, name: data.name };
+            socket.emit('others in lobby', lobbies[lobbyId]);
+            lobbies[lobbyId].push(player);
+            socket.join(lobbyId)
+            socket.to(lobbyId).emit('other player in lobby', player);
+        });
+
         socket.on('join lobby', data => {
             console.log('connect to lobby')
 
@@ -59,33 +92,16 @@ io.on('connection', function (socket) {
             socket.broadcast.emit('other player in lobby', user)
         })
 
+        socket.on('create lobby', data => {
+            console.log('create lobby');
+            // create the new room and add the user
+            socket.join(data)
+        })
+
 
         socket.on('play', data => {
             console.log('Player started playing: ', socket.id);
-
-            /*if (clients.length === 0) {
-                playerSpawnPoints = [];
-                data.playerSpawnPoints.forEach(function (_playerSpawnPoint) {
-                    let playerSpawnPoint = {
-                        position: _playerSpawnPoint.position,
-                        rotation: _playerSpawnPoint.rotation
-                    };
-                    playerSpawnPoints.push(playerSpawnPoint);
-                });
-            }
-            let index = Math.floor(Math.random() * playerSpawnPoints.length)
-            let randomSpawnPoint = playerSpawnPoints[index];
-            playerSpawnPoints.splice(index, 1)
-            currentPlayer = {   name: data.name,
-                position: randomSpawnPoint.position ? randomSpawnPoint.position : { x: 0, y: 0, z: 0 },
-                rotation: randomSpawnPoint.rotation ? randomSpawnPoint.rotation : { x: 0, y: 0, z: 0 },
-                movement: 0
-            };
-            clients.push(currentPlayer);
-            // in your game, tells you that you have joined
-            console.log(currentPlayer.name + ' emit: play: ' + JSON.stringify(currentPlayer));
-            socket.emit('play', currentPlayer);
-            socket.broadcast.emit('other player connected', currentPlayer);*/
+            const lobbyId = data.lobby
             playerSpawnPoints = [];
             data.playerSpawnPoints.forEach(function (_playerSpawnPoint) {
                 let playerSpawnPoint = {
@@ -95,9 +111,9 @@ io.on('connection', function (socket) {
                 playerSpawnPoints.push(playerSpawnPoint);
             });
             let ReadyToPlayers = [];
-            for (let i = 0; i < lobby.length; i++) {
+            for (let i = 0; i < lobbies[lobbyId].length; i++) {
                 let randomSpawnPoint = playerSpawnPoints[i]; // Now randomized
-                let lobPla = lobby[i];
+                let lobPla = lobbies[lobbyId][i];
                 let play = {
                     name: lobPla.name,
                     position: randomSpawnPoint.position,
@@ -105,9 +121,12 @@ io.on('connection', function (socket) {
                     movement: 0,
                 };
                 ReadyToPlayers.push(play);
+                console.log(play)
             }
+            console.log(ReadyToPlayers)
             socket.emit('play', ReadyToPlayers)
-            socket.broadcast.emit('play', ReadyToPlayers)
+            //socket.broadcast.emit('play', ReadyToPlayers)
+            socket.to(data.lobby).emit('play', ReadyToPlayers)
         });
 
         socket.on('empty clients', data =>{
@@ -171,12 +190,14 @@ io.on('connection', function (socket) {
         });
 
         socket.on('sign up', data => {
+            console.log("On passe dans le sign up 1")
             sqlCon.query("SELECT COUNT(*) as total FROM users WHERE username = ? OR ?",[data.username, data.email], function(err, result, fields){
                 if(err) throw err;
                 let tot = parseInt(result[0].total);
                 if(tot > 0 ) {
                     socket.emit('sign in', false);
                 }else{
+                    console.log("On passe dans le sign up 2")
                     const newUser = {
                         username : data.username,
                         email : data.email,
@@ -191,7 +212,7 @@ io.on('connection', function (socket) {
                             socket.emit("sign up" , false)
                             console.log('Query executed but did not affect any rows.');
                         }
-                        socket.emit('sign up', result);
+                        //socket.emit('sign up', result);
                     })
                 }
             })
@@ -239,6 +260,7 @@ io.on('connection', function (socket) {
             currentPlayer.movement = data.movement;
             currentPlayer.rotation = data.rotation;
             currentPlayer.position = data.position;
+            //socket.to(lobbyId).emit('player move', currentPlayer);
             socket.broadcast.emit('player move', currentPlayer);
         });
 
