@@ -11,7 +11,8 @@ public class RankingEntryModifier : MonoBehaviour
     [SerializeField] private TextMeshProUGUI rank;
     [SerializeField] private TextMeshProUGUI username;
     [SerializeField] private TextMeshProUGUI score;
-
+    
+    private NetworkManager _networkManager;
     public void AddValues(string ra, string na, string sc)
     {
         rank.text = ra;
@@ -23,4 +24,25 @@ public class RankingEntryModifier : MonoBehaviour
     {
         username.text = na;
     }
+    
+    public void LobbyChosen()
+    {
+        GetNetworkManager();
+        _networkManager.LobbyChosen(username.text);
+    }
+    private void GetNetworkManager()
+    {
+        GameObject networkManagerObject = GameObject.FindWithTag("Network Manager");
+        if (networkManagerObject)
+        {
+            _networkManager = networkManagerObject.GetComponent<NetworkManager>();
+            if (_networkManager == null)
+            {
+                Debug.Log("Le _networkManger est null dans le menuManager Component");
+            }
+        }
+    }
+
+
+    
 }

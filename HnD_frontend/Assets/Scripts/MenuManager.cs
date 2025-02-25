@@ -11,6 +11,7 @@ public class MenuManager : MonoBehaviour
    [SerializeField] private GameObject rankingsPanel;
    [SerializeField] private GameObject lobbyPanel;
    [SerializeField] private GameObject endGameScorePanel;
+   [SerializeField] private GameObject hostsPanel;
    
    private GameObject _currentPanel;
    
@@ -39,10 +40,14 @@ public class MenuManager : MonoBehaviour
    private Hash128 _hash;
 
    private Dictionary<string,GameObject> _lobbyEntries = new Dictionary<string,GameObject>();
+   private Dictionary<string, GameObject> _hostLobbyEntries = new Dictionary<string, GameObject>();
    private List<GameObject> _endGameEntries = new List<GameObject>();
-
+   [SerializeField] private GameObject hostPlayButton;
    [SerializeField] private Transform lobbyContentContainer;
    [SerializeField] private GameObject lobbyEntryTemplate;
+
+   [SerializeField] private Transform lobbyHostContentContainer;
+   [SerializeField] private GameObject lobbyHostEntryTemplate;
 
    [SerializeField] private Transform endGameScoreContainer;
    [SerializeField] private GameObject endGameScoreTemplate;
@@ -69,7 +74,7 @@ public class MenuManager : MonoBehaviour
          }
       }
    }
-
+   #region Panel Setting
    private void SetPanel(GameObject panel)
    {
       if(_currentPanel){ _currentPanel.SetActive(false);}
@@ -85,6 +90,11 @@ public class MenuManager : MonoBehaviour
    public void SetRegisterPanel()
    {
       SetPanel(registerPanel);
+   }
+
+   public void SetHostsPanel()
+   {
+      SetPanel(hostsPanel);
    }
 
    public void SetSignInPanel()
@@ -108,6 +118,9 @@ public class MenuManager : MonoBehaviour
       SetPanel(rankingsPanel);
    }
    
+   #endregion
+   
+   #region Sign In and Sign Up Logic
    public void SetSignInUsername(string u)
    {
       _signInUsername = u;
@@ -210,7 +223,7 @@ public class MenuManager : MonoBehaviour
          Debug.Log("Passwords don't match");
       }
    }
-
+   #endregion
    public void AddToEndGameScore(List<NetworkManager.ScoreJson> entries)
    {
       entries.Sort((a, b) => b.score.CompareTo(a.score));
@@ -242,6 +255,15 @@ public class MenuManager : MonoBehaviour
          Destroy(entry);
       }
    }
+
+   public void AddToHostsLobby(string host)
+   {
+      GameObject lobbyHost = Instantiate(lobbyHostEntryTemplate, lobbyHostContentContainer, false);
+      RankingEntryModifier rankEnt = lobbyHost.GetComponent<RankingEntryModifier>();
+      rankEnt.AddValues(host);
+      lobbyHost.gameObject.SetActive(true);
+      _hostLobbyEntries.Add(host, lobbyHost);
+   }
    public void AddToLobby(string player)
    {
       if (_lobbyEntries.ContainsKey(player)) return; 
@@ -252,17 +274,22 @@ public class MenuManager : MonoBehaviour
       entry.gameObject.SetActive(true);
       _lobbyEntries.Add(player, entry);
    }
+
    
    public void AddCurrentUserToLobby()
    {
-      GameObject entry = Instantiate(lobbyEntryTemplate, lobbyContentContainer, false);
-      Debug.Log("Added the Currentuser to the lobby : "+ _signInUsername + "    *************");
-      RankingEntryModifier lobEnt = entry.GetComponent<RankingEntryModifier>();
-      lobEnt.AddValues(_signInUsername);
-      _lobbyEntries.Add(_signInUsername, entry);
-      entry.gameObject.SetActive(true);
+      // GameObject entry = Instantiate(lobbyEntryTemplate, lobbyContentContainer, false);
+      // Debug.Log("Added the Currentuser to the lobby : "+ _signInUsername + "    *************");
+      // RankingEntryModifier lobEnt = entry.GetComponent<RankingEntryModifier>();
+      // lobEnt.AddValues(_signInUsername);
+      // _lobbyEntries.Add(_signInUsername, entry);
+      // entry.gameObject.SetActive(true);
+      AddToLobby(_signInUsername);
    }
-
+   public void SetPlayButton(bool active)
+      {
+         hostPlayButton.SetActive(active);
+      }
    public void DeleteUserFromLobby(string player)
    {
       GameObject entry = _lobbyEntries[player];

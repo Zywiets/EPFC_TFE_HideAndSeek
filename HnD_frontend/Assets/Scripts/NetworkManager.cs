@@ -34,8 +34,7 @@ public class NetworkManager : MonoBehaviour
     private string _userId;
     private bool _isSignedIn;
     private bool _isLobbyHost;
-
-    private Dictionary<string, double> _scorebord = new Dictionary<string, double>();
+    
     private int _roundCompt = 0;
     private int _numOfSeekers;
     private List<UserJson> _playersPlayingList = new List<UserJson>();
@@ -74,10 +73,13 @@ public class NetworkManager : MonoBehaviour
         _sioCom.Instance.On("player move", OnPlayerMove);
         _sioCom.Instance.On("player jump", OnPlayerJump);
         _sioCom.Instance.On("other player in lobby", OnOtherPlayerInLobby);
+        _sioCom.Instance.On("new host", OnNewHost);
         _sioCom.Instance.On("test", OnTest);
+        _sioCom.Instance.On("others in lobby", OnOthersInLobby);
         _sioCom.Instance.On("sign in", OnSignIn);
         _sioCom.Instance.On("sign up", OnSignUp);
         _sioCom.Instance.On("lobby host", OnLobbyHost);
+        _sioCom.Instance.On("hosts data", OnHostsLobbyList );
         _sioCom.Instance.On("rankings", OnRankingsReceived);
         _sioCom.Instance.On("started seeking", OnSeekerReleased);
         _sioCom.Instance.On("player found", OnSetSeeker);
@@ -89,7 +91,7 @@ public class NetworkManager : MonoBehaviour
     public void JoinGame()
     {
         Shuffle(playerSpawnPoints);
-        PlayerJson playAndSpawns = new PlayerJson(_currentUser.name, playerSpawnPoints);
+        PlayerJson playAndSpawns = new PlayerJson(_currentUser.name, playerSpawnPoints, _currentUser.lobby);
         string data = JsonUtility.ToJson(playAndSpawns);
         _sioCom.Instance.Emit("play", data, false);
     }
@@ -120,11 +122,30 @@ public class NetworkManager : MonoBehaviour
 
     public void JoinLobby()
     {
+        // this is where the player communicates <ith the backend for the lobby logic
         PlayerJson player = new PlayerJson(_currentUser.name);
         string data = JsonUtility.ToJson(player);
         _sioCom.Instance.Emit("join lobby", data, false);
     }
 
+    public void LobbyChosen(string lobbyName)
+    {
+        _currentUser.lobby = lobbyName;
+        string data = JsonUtility.ToJson(_currentUser);
+        _sioCom.Instance.Emit("lobby chosen", data, false);
+        _menuManagerComponent.SetLobbyPanel();
+        
+    }
+    public void BecomeLobbyHost()
+    {
+        _currentUser.lobby = _currentUser.name;
+        string data = JsonUtility.ToJson(_currentUser);
+        _sioCom.Instance.Emit("new lobby host", data, false);
+    }
+    public void GetLobbies()
+    {
+        _sioCom.Instance.Emit("get lobbies");
+    }
     public void SendFormToDB(string us, string em, string pa)
     
     {
@@ -227,6 +248,32 @@ public class NetworkManager : MonoBehaviour
         Debug.Log(data);
     }
 
+    void OnNewHost(string data)
+    {
+        UserJson host = JsonUtility.FromJson<UserJson>(data);
+        _menuManagerComponent.AddToHostsLobby(host.lobby);
+    }
+    void OnHostsLobbyList(string data)
+    {
+        var hostsList = JsonHelper.FromJson<string>(data);
+        foreach (var host in hostsList)
+        {
+            Debug.Log(host);
+            _menuManagerComponent.AddToHostsLobby(host);
+        }
+    }
+
+    void OnOthersInLobby(string data)
+    {
+        Debug.Log(data+ "\n the other players in the lobby");
+        UserJson[] othLobbyList = JsonHelper.FromJson<UserJson>(data);
+        Debug.Log(othLobbyList.Length + "\n the lenght of the lobby");
+        foreach (var users in othLobbyList)
+        {
+            _menuManagerComponent.AddToLobby(users.name);
+        }
+        _menuManagerComponent.AddToLobby(_currentUser.name);
+    }
     void OnOtherPlayerInLobby(string data)
     {
         if (!_isSignedIn) return;
@@ -264,6 +311,7 @@ public class NetworkManager : MonoBehaviour
         joinGameCanvas.gameObject.SetActive(false);
         UserJson[] usersJson = JsonHelper.FromJson<UserJson>(data);
         _playersPlayingList = new List<UserJson>(usersJson);
+        Debug.Log(data);
         backgroundSound.SetActive(false);
         StartRound();
         
@@ -553,11 +601,13 @@ public class NetworkManager : MonoBehaviour
     {
         public string name;
         public List<PointJson> playerSpawnPoints;
+        public string lobby;
 
-        public PlayerJson(string _name, List<GameObject> _playerSpawnPoints)
+        public PlayerJson(string _name, List<GameObject> _playerSpawnPoints, string _lobby)
         {
             playerSpawnPoints = new List<PointJson>();
             name = _name;
+            lobby = _lobby;
             foreach (GameObject playerSpawnPoint in _playerSpawnPoints)
             {
                 PointJson pointJSON = new PointJson(playerSpawnPoint);
@@ -693,6 +743,7 @@ public class NetworkManager : MonoBehaviour
         public float[] position;
         public float[] rotation;
         public float[] movement;
+        public string lobby;
 
         public static UserJson CreateFromJSON(string data)
         {
@@ -718,9 +769,9 @@ public class NetworkManager : MonoBehaviour
     }
     #endregion
     
-    // To help with the limitations of JsonUtility
+   
     public static class JsonHelper
-    {
+    { // To help with the limitations of JsonUtility
         public static T[] FromJson<T>(string json)
         {
             string newJson = "{ \"Items\": " + json + "}";

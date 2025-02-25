@@ -369,6 +369,7 @@
 "Assets/Scripts/GameManager.cs"
 "Assets/Scripts/HiderCollision.cs"
 "Assets/Scripts/HidingTimer.cs"
+"Assets/Scripts/HostLobbyButtonLogic.cs"
 "Assets/Scripts/InGameMenuManager.cs"
 "Assets/Scripts/MenuManager.cs"
 "Assets/Scripts/NetworkManager.cs"
