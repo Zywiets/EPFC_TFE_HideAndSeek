@@ -286,10 +286,11 @@ public class NetworkManager : MonoBehaviour
     {
         bool res = bool.Parse(data);
         _isSignedIn = res;
-        if (res)
+        if (_isSignedIn)
         {
             _currentUser = new UserJson(_signUpForm.username);
             _menuManagerComponent.SetOptionMenuPanel();
+            _menuManagerComponent.DisableSignInErrorMessage();
         }
         else
         {

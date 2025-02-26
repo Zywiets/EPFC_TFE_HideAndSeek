@@ -134,6 +134,11 @@ public class MenuManager : MonoBehaviour
    public void CheckUsernamePassword()
    {
       if (_isCheckingUserPass) return;
+      if(string.IsNullOrWhiteSpace(_signInUsername) || string.IsNullOrWhiteSpace(_signInPassword))
+      {
+         SetSignInErrorMessage();
+         return;
+      }
       _hash.Append(_signInPassword);
       _signInPassword = _hash.ToString();
       _networkManager.CheckSignIn(_signInUsername, _signInPassword);
@@ -145,6 +150,14 @@ public class MenuManager : MonoBehaviour
    {
       _isCheckingUserPass = false;
       signInError.SetText(SignInErrorMessage);
+   }
+
+   public void DisableSignInErrorMessage()
+   {
+      _isCheckingUserPass = false;
+      signInError.SetText(string.Empty);
+      _signInUsername = string.Empty;
+      _signInPassword = string.Empty;
    }
    
    public void IsValidUsername(string word)

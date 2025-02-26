@@ -180,7 +180,6 @@ io.on('connection', function (socket) {
                        if(err) throw err
                        const userId = resu[0].user_id;
                        socket.emit('user_id', userId)
-
                    })
                }else{
                    socket.emit('sign in', false)
