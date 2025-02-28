@@ -271,6 +271,7 @@ public class MenuManager : MonoBehaviour
 
    public void AddToHostsLobby(string host)
    {
+      if (_hostLobbyEntries.ContainsKey(host)) return;
       GameObject lobbyHost = Instantiate(lobbyHostEntryTemplate, lobbyHostContentContainer, false);
       RankingEntryModifier rankEnt = lobbyHost.GetComponent<RankingEntryModifier>();
       rankEnt.AddValues(host);
@@ -288,7 +289,16 @@ public class MenuManager : MonoBehaviour
       _lobbyEntries.Add(player, entry);
    }
 
-   
+   public void SendMessageToDeleteHost()
+   {
+      _networkManager.SendMessageToDeleteHost();
+   }
+   public void DeleteHostFromHostsLobby(string host)
+   {
+      GameObject entry = _hostLobbyEntries[host];
+      _hostLobbyEntries.Remove(host);
+      Destroy(entry);
+   }
    public void AddCurrentUserToLobby()
    {
       // GameObject entry = Instantiate(lobbyEntryTemplate, lobbyContentContainer, false);
@@ -297,7 +307,7 @@ public class MenuManager : MonoBehaviour
       // lobEnt.AddValues(_signInUsername);
       // _lobbyEntries.Add(_signInUsername, entry);
       // entry.gameObject.SetActive(true);
-      AddToLobby(_signInUsername);
+      //AddToLobby(_signInUsername);
    }
    public void SetPlayButton(bool active)
       {

@@ -76,6 +76,7 @@ public class NetworkManager : MonoBehaviour
         _sioCom.Instance.On("new host", OnNewHost);
         _sioCom.Instance.On("test", OnTest);
         _sioCom.Instance.On("others in lobby", OnOthersInLobby);
+        _sioCom.Instance.On("delete host lobby", OnDeleteHost);
         _sioCom.Instance.On("sign in", OnSignIn);
         _sioCom.Instance.On("sign up", OnSignUp);
         _sioCom.Instance.On("lobby host", OnLobbyHost);
@@ -141,6 +142,7 @@ public class NetworkManager : MonoBehaviour
         _currentUser.lobby = _currentUser.name;
         string data = JsonUtility.ToJson(_currentUser);
         _sioCom.Instance.Emit("new lobby host", data, false);
+        _menuManagerComponent.AddToLobby(_currentUser.name);
     }
     public void GetLobbies()
     {
@@ -213,6 +215,13 @@ public class NetworkManager : MonoBehaviour
         }
     }
 
+    public void SendMessageToDeleteHost()
+    {
+        string data = JsonUtility.ToJson(_currentUser);
+        _sioCom.Instance.Emit("delete lobby", data, false);
+        _menuManagerComponent.DeleteHostFromHostsLobby(_currentUser.name);
+    }
+
     private void EmptyLobbyInNetwork(List<ScoreJson> scores)
     {
         string data = JsonConvert.SerializeObject(scores);
@@ -251,6 +260,7 @@ public class NetworkManager : MonoBehaviour
     void OnNewHost(string data)
     {
         UserJson host = JsonUtility.FromJson<UserJson>(data);
+        Debug.Log("new host added to lobby ====   " + host.name);
         _menuManagerComponent.AddToHostsLobby(host.lobby);
     }
     void OnHostsLobbyList(string data)
@@ -261,6 +271,11 @@ public class NetworkManager : MonoBehaviour
             Debug.Log(host);
             _menuManagerComponent.AddToHostsLobby(host);
         }
+    }
+
+    void OnDeleteHost(string data)
+    {
+        _menuManagerComponent.DeleteHostFromHostsLobby(data);
     }
 
     void OnOthersInLobby(string data)
