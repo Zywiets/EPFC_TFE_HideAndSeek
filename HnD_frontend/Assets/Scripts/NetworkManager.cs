@@ -153,13 +153,13 @@ public class NetworkManager : MonoBehaviour
     {
         _signUpForm = new SignUpFormJson(us, em, pa);
         string data = JsonUtility.ToJson(_signUpForm);
-        Debug.Log("--------- SendFormToDB in Network Manager " + data);
+        //Debug.Log("--------- SendFormToDB in Network Manager " + data);
         _sioCom.Instance.Emit("sign up", data, false);
     }
     
     public void CheckSignIn(string signInUsername, string signInPassword)
     {
-        Debug.Log("++++++++++ Sending message to DB");
+        //Debug.Log("++++++++++ Sending message to DB");
         _signUpForm = new SignUpFormJson(signInUsername, signInPassword);
         string data = JsonUtility.ToJson(_signUpForm);
         _sioCom.Instance.Emit("sign in", data, false);
@@ -181,8 +181,8 @@ public class NetworkManager : MonoBehaviour
 
     public void StartSeekingTimers()
     {
-        string data = _currentUser.name;
-        _sioCom.Instance.Emit("started seeking", data, true);
+        string data = JsonUtility.ToJson(_currentUser);
+        _sioCom.Instance.Emit("started seeking", data, false);
         if (_isLobbyHost)
         {
             _localPlayerInGameMenuManager._isRoundTimerOn = true;
@@ -203,15 +203,15 @@ public class NetworkManager : MonoBehaviour
     public void HasBeenFound() {
         _totalTimeSpentHiding += _timeSpentHiding;
         
-        string data = _currentUser.name;
+        string data = JsonUtility.ToJson(_currentUser);
         _localPlayerRoleComp.SetSeekerMaterial();
-        Debug.Log("Le player a été trouvé"+ _numOfSeekers +"  "+ _playersPlayingList.Count);
-        _sioCom.Instance.Emit("has been found", data, true);
+        //Debug.Log("Le player a été trouvé"+ _numOfSeekers +"  "+ _playersPlayingList.Count);
+        _sioCom.Instance.Emit("has been found", data, false);
         _numOfSeekers++;
         if (_numOfSeekers >= _playersPlayingList.Count)
         {
             OnStartRound("l");
-            Debug.Log("Restart the round because has been found");
+            //Debug.Log("Restart the round because has been found");
         }
     }
 
@@ -219,13 +219,13 @@ public class NetworkManager : MonoBehaviour
     {
         string data = JsonUtility.ToJson(_currentUser);
         _sioCom.Instance.Emit("delete lobby", data, false);
-        _menuManagerComponent.DeleteHostFromHostsLobby(_currentUser.name);
+        //_menuManagerComponent.DeleteHostFromHostsLobby(_currentUser.name);
     }
 
-    private void EmptyLobbyInNetwork(List<ScoreJson> scores)
+    private void SendScoresToDB(List<ScoreJson> scores)
     {
         string data = JsonConvert.SerializeObject(scores);
-        _sioCom.Instance.Emit("empty clients", data, false);
+        _sioCom.Instance.Emit("add scores", data, false);
     }
 
     private void SendScoreToPlayers()
@@ -260,7 +260,7 @@ public class NetworkManager : MonoBehaviour
     void OnNewHost(string data)
     {
         UserJson host = JsonUtility.FromJson<UserJson>(data);
-        Debug.Log("new host added to lobby ====   " + host.name);
+        //Debug.Log("new host added to lobby ====   " + host.name);
         _menuManagerComponent.AddToHostsLobby(host.lobby);
     }
     void OnHostsLobbyList(string data)
@@ -268,21 +268,22 @@ public class NetworkManager : MonoBehaviour
         var hostsList = JsonHelper.FromJson<string>(data);
         foreach (var host in hostsList)
         {
-            Debug.Log(host);
+            //Debug.Log(host);
             _menuManagerComponent.AddToHostsLobby(host);
         }
     }
 
     void OnDeleteHost(string data)
     {
+        Debug.Log("the data received to delete the lobby "+data);
         _menuManagerComponent.DeleteHostFromHostsLobby(data);
     }
 
     void OnOthersInLobby(string data)
     {
-        Debug.Log(data+ "\n the other players in the lobby");
+        //Debug.Log(data+ "\n the other players in the lobby");
         UserJson[] othLobbyList = JsonHelper.FromJson<UserJson>(data);
-        Debug.Log(othLobbyList.Length + "\n the lenght of the lobby");
+        //Debug.Log(othLobbyList.Length + "\n the lenght of the lobby");
         foreach (var users in othLobbyList)
         {
             _menuManagerComponent.AddToLobby(users.name);
@@ -327,7 +328,7 @@ public class NetworkManager : MonoBehaviour
         joinGameCanvas.gameObject.SetActive(false);
         UserJson[] usersJson = JsonHelper.FromJson<UserJson>(data);
         _playersPlayingList = new List<UserJson>(usersJson);
-        Debug.Log(data);
+        //Debug.Log(data);
         backgroundSound.SetActive(false);
         StartRound();
         
@@ -347,7 +348,7 @@ public class NetworkManager : MonoBehaviour
         
         if (_roundCompt < _playersPlayingList.Count)
         {
-            Debug.Log("Le compteur est à "+_roundCompt+" et le playersList est à "+ _playersPlayingList.Count);
+            //Debug.Log("Le compteur est à "+_roundCompt+" et le playersList est à "+ _playersPlayingList.Count);
             _waitingZone.SetActive(true);
             StartRound();
         }
@@ -374,11 +375,14 @@ public class NetworkManager : MonoBehaviour
         backgroundSound.SetActive(true);
         _waitingZone.SetActive(true);
         _menuManagerComponent.SetEndGamePanel();
+        
+        string data = JsonUtility.ToJson(_currentUser);
+        _sioCom.Instance.Emit("end lobby", data, false);
     }
 
     void OnSetOtherPlayerFinalScore(string data)
     {
-        Debug.Log("Le message reçu par le network pour le score est "+data);
+        //Debug.Log("Le message reçu par le network pour le score est "+data);
         ScoreJson sco = ScoreJson.CreateFromJSON(data);
         AddValueToEndScoreTable(sco);
     }
@@ -393,7 +397,8 @@ public class NetworkManager : MonoBehaviour
             _menuManagerComponent.AddToEndGameScore(_scorersList);
             if (_isLobbyHost)
             {
-                EmptyLobbyInNetwork(_scorersList);
+                SendScoresToDB(_scorersList);
+                SendMessageToDeleteHost();
             }
             _scorersList.Clear();
             EndGame();
@@ -464,12 +469,12 @@ public class NetworkManager : MonoBehaviour
         ++_numOfSeekers;
         if (_numOfSeekers >= _playersPlayingList.Count)
         {
-            Debug.Log("nombre max de seeker atteint");
+            //Debug.Log("nombre max de seeker atteint");
             OnStartRound("l");
         }
         else
         {
-            Debug.Log("On set les seeker details");
+            //Debug.Log("On set les seeker details");
            GameObject seeker = _playersGameObjectDict[data];
            PlayerRole seekerRole = seeker.GetComponent<PlayerRole>();
            seekerRole.SetSeekerMaterial(); 
@@ -585,7 +590,7 @@ public class NetworkManager : MonoBehaviour
 
     private void SetSeekerInNewGame(string seekerName)
     {
-        Debug.Log("setting the seeker "+ seekerName);
+        //Debug.Log("setting the seeker "+ seekerName);
         if (seekerName.Equals(_currentUser.name))
         {
             _localPlayerRoleComp.SetSeekerMaterial();
@@ -601,7 +606,7 @@ public class NetworkManager : MonoBehaviour
 
     public void SetBeginTimer(float time)
     {
-        Debug.Log("le time de départ est "+ time);
+        //Debug.Log("le time de départ est "+ time);
         _beginTimer = time;
     }
 

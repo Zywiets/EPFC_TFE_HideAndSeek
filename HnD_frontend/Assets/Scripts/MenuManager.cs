@@ -272,6 +272,7 @@ public class MenuManager : MonoBehaviour
    public void AddToHostsLobby(string host)
    {
       if (_hostLobbyEntries.ContainsKey(host)) return;
+      Debug.Log("Adding this to the Host lobby  " + host);
       GameObject lobbyHost = Instantiate(lobbyHostEntryTemplate, lobbyHostContentContainer, false);
       RankingEntryModifier rankEnt = lobbyHost.GetComponent<RankingEntryModifier>();
       rankEnt.AddValues(host);
@@ -295,9 +296,12 @@ public class MenuManager : MonoBehaviour
    }
    public void DeleteHostFromHostsLobby(string host)
    {
+      //if (!_hostLobbyEntries.ContainsKey(host)) return;
+      Debug.Log("Deleting the fuck out of this shit °°°°°°°°°°°°  "+host);
       GameObject entry = _hostLobbyEntries[host];
-      _hostLobbyEntries.Remove(host);
       Destroy(entry);
+      _hostLobbyEntries.Remove(host);
+      Debug.Log("the number of host is "+_hostLobbyEntries.Count);
    }
    public void AddCurrentUserToLobby()
    {
