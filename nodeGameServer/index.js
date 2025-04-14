@@ -5,9 +5,9 @@ const crypto = require('crypto');
 const mysql = require('mysql');
 const {TIME} = require("mysql/lib/protocol/constants/types");
 const sqlCon = mysql.createConnection({
-    host: "localhost",
+    host: "127.0.0.1",
     user: "root",
-    password: "",
+    password: "7412",
     database: "hs-db"
 });
 server.listen(3000);
@@ -24,10 +24,9 @@ app.get('/', function(req, res){
     res.send("Server is running!");
 });
 
-io.on('connection', function (socket) {
-        console.log(`new connection socket: ${socket.id}`);
-
-        var currentPlayer = {};
+io.on('connection', function(socket) {
+    console.log(`New connection: ${socket.id}`);
+    let currentPlayer = {};
 
         socket.on('player connect', () => {
             console.log('Player connected:', socket.id);
@@ -73,6 +72,19 @@ io.on('connection', function (socket) {
             socket.join(lobbyId)
             socket.to(lobbyId).emit('other player in lobby', player);
         });
+
+        socket.on('delete lobby', (data) => {
+            let lobbyId = data.lobby;
+            delete lobbies[lobbyId];
+            let index = hosts.indexOf(lobbyId);
+            if (index !== -1) {
+                hosts.splice(index, 1);
+            }
+            console.log('delete lobby', lobbyId);
+            console.log('Current lobbies:', lobbies);
+            console.log('Current hosts:', hosts);
+            socket.broadcast.emit('delete host lobby', lobbyId);
+        })
 
         socket.on('join lobby', data => {
             console.log('connect to lobby')
@@ -129,7 +141,7 @@ io.on('connection', function (socket) {
             socket.to(data.lobby).emit('play', ReadyToPlayers)
         });
 
-        socket.on('empty clients', data =>{
+        socket.on('add scores', data =>{
             const highestScore = Math.max(...data.map(player => player.score));
             const winners = data.filter(player => player.score === highestScore).map(player => player.id);
             let gameId = ""
@@ -147,11 +159,11 @@ io.on('connection', function (socket) {
                     sqlCon.query('UPDATE score SET is_winner = TRUE WHERE game_id = ? AND user_id = ?', [gameId, winnerId]);
                 }
             });
+        })
 
-
-
-            lobby = [];
-            console.log("emptying lobby list")
+        socket.on('end lobby', data => {
+            const lobbyId = data.lobby;
+            socket.leave(lobbyId);
         })
 
         socket.on('test', data =>{
@@ -172,14 +184,13 @@ io.on('connection', function (socket) {
             sqlCon.query("SELECT users.password FROM users WHERE username = ?", [data.username], function(err, res, fields){
                if(err) throw err;
                const hashPass = data.password;
-               console.log('le mdp du user :', data.password)
-                console.log("le mdp de la DB", res[0].password)
                if(res[0].password === hashPass){
                    socket.emit('sign in', true)
                    sqlCon.query("SELECT user_id FROM users WHERE username = ?", [data.username], function(err, resu, fields){
                        if(err) throw err
                        const userId = resu[0].user_id;
                        socket.emit('user_id', userId)
+                       socket.emit('user_socket', socket.id);
                    })
                }else{
                    socket.emit('sign in', false)
@@ -237,11 +248,13 @@ io.on('connection', function (socket) {
             socket.broadcast.emit('first seeker')
         })
         socket.on('started seeking' ,function(data){
-            socket.broadcast.emit('started seeking')
+            const lobbyId = data.lobby
+            socket.to(lobbyId).emit('started seeking')
         })
 
         socket.on('has been found', function (data){
-            socket.broadcast.emit('player found', data)
+            const lobbyId = data.lobby
+            socket.to(lobbyId).emit('player found', data)
         })
         socket.on('round timer over', function(data){
             socket.broadcast.emit('round over')
@@ -255,26 +268,23 @@ io.on('connection', function (socket) {
 
         socket.on('player move', function (data) {
             //console.log('received: move: ' + JSON.stringify(data));
+            const lobbyId = data.lobby
             currentPlayer.name = data.name;
             currentPlayer.movement = data.movement;
             currentPlayer.rotation = data.rotation;
             currentPlayer.position = data.position;
-            //socket.to(lobbyId).emit('player move', currentPlayer);
-            socket.broadcast.emit('player move', currentPlayer);
+            socket.to(lobbyId).emit('player move', currentPlayer);
+            //socket.broadcast.emit('player move', currentPlayer);
         });
 
         socket.on('player jump', function(data) {
            socket.broadcast.emit('player jump', data);
         });
 
-        socket.on('player turn', function (data) {
-            console.log('received: turn: ' + JSON.stringify(data));
-            currentPlayer.rotation = data.position;
-            socket.broadcast.emit('player turn', currentPlayer);
-        });
+
 
         socket.on('disconnect', function () {
-            console.log(currentPlayer.name + ' received: disconnect ' + JSON.stringify(currentPlayer));
+            console.log(`new disconnection socket: ${socket.id}`);
             socket.broadcast.emit('other player disconnected', currentPlayer);
             console.log(currentPlayer.name + ' broadcast: other player disconnected ' + JSON.stringify(currentPlayer));
             //for loop to modify the data structure of clients
@@ -282,7 +292,6 @@ io.on('connection', function (socket) {
                 if (clients[i].name === currentPlayer.name) {
                     clients.splice(i, 1);
                 }
-
             }
         });
     });
