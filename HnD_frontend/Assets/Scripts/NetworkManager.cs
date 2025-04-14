@@ -1,15 +1,10 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using Cinemachine;
 using Firesplash.UnityAssets.SocketIO;
 using Newtonsoft.Json;
-using TMPro;
-using Unity.VisualScripting;
 using UnityEngine;
-using UnityEngine.Serialization;
-using UnityEngine.UI;
 using Random = System.Random;
 
 public class NetworkManager : MonoBehaviour
@@ -47,17 +42,6 @@ public class NetworkManager : MonoBehaviour
     
 
     [SerializeField] private GameObject _waitingZone;
-    // private void Awake()
-    // {
-    //     if (Instance == null)
-    //     {
-    //         Instance = this;
-    //     } else if (Instance != this)
-    //     {
-    //         Destroy(gameObject);
-    //     }
-    //     DontDestroyOnLoad(gameObject);
-    // }
 
     private void Start()
     {
@@ -86,6 +70,7 @@ public class NetworkManager : MonoBehaviour
         _sioCom.Instance.On("player found", OnSetSeeker);
         _sioCom.Instance.On("player score", OnSetOtherPlayerFinalScore);
         _sioCom.Instance.On("user_id", OnSetUserId);
+        _sioCom.Instance.On("user_socket", OnSetUserSocket);
         _sioCom.Instance.Connect();
     }
 
@@ -98,19 +83,11 @@ public class NetworkManager : MonoBehaviour
     }
     private IEnumerator ConnectToServer()
     {
-        
         yield return new WaitForSeconds(0.5f);
         
         _sioCom.Instance.Emit("player connect");
         
         yield return new WaitForSeconds(1f);
-
-        // Shuffle(playerSpawnPoints);
-        // PlayerJson playAndSpawns = new PlayerJson(_currentUser.name, playerSpawnPoints);
-        // string data = JsonUtility.ToJson(playAndSpawns);
-        // // Debug.Log(data + " Est envoyé au server ---------");
-        // _sioCom.Instance.Emit("play", data, false);
-        // joinGameCanvas.gameObject.SetActive(false);
     }
 
     public void SignOut()
@@ -553,6 +530,10 @@ public class NetworkManager : MonoBehaviour
         _userId = data;
     }
 
+    void OnSetUserSocket(string data)
+    {
+        _currentUser.name = data;
+    }
     void OnPlayerJump(string data)
     {
         Debug.Log("°°°°°° OnplayerJump °°°°°");
@@ -567,23 +548,6 @@ public class NetworkManager : MonoBehaviour
             ThirdPersonMovement thirdMove =  p.GetComponentInChildren<ThirdPersonMovement>();
             thirdMove.HandleJump();
         }
-    }
-
-    void OnPlayerTurn(string data)
-    {
-        Debug.Log("------On player turn------");
-        UserJson userJson = UserJson.CreateFromJSON(data);
-        Quaternion rotation = Quaternion.Euler(userJson.rotation[0], userJson.rotation[1], userJson.rotation[2]);
-        if (userJson.name.Equals(playerNameInput))
-        {
-            return;
-        }
-        GameObject p = GameObject.Find(userJson.name);
-        if (p != null)
-        {
-            p.transform.rotation = rotation;
-        }
-
     }
 
     #endregion

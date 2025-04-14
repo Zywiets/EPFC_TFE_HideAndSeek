@@ -340,8 +340,11 @@ public class MenuManager : MonoBehaviour
    {
       if (_registerUsername?.Length > 0 && _email?.Length > 0 && _registerPassword?.Length > 0 && _passwordConfirm?.Length > 0)
       {
-            _hash.Append(_registerPassword);
-            _registerPassword = _hash.ToString();
+         var password = _hash;
+         password.Append(_registerPassword);
+//            _hash.Append(_registerPassword);
+         _registerPassword = password.ToString();
+  //          _registerPassword = _hash.ToString();
             _networkManager.SendFormToDB(_registerUsername, _email, _registerPassword);
             ClearHash();
             ClearSignUpForm();

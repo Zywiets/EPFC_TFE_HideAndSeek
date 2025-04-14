@@ -1,9 +1,4 @@
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using Cinemachine;
 using UnityEngine;
-using UnityEngine.Serialization;
 
 public class PlayerRole : MonoBehaviour
 {
@@ -38,7 +33,7 @@ public class PlayerRole : MonoBehaviour
 
     public void SetSeekerMaterial()
     {
-        Debug.Log("Setting ht e sekker skin");
+        //Debug.Log("Setting ht e sekker skin");
         _rendererAvatar.material = _seekerMaterial;
         seekerAvatar.tag = SeekerName;
     }
