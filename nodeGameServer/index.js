@@ -12,6 +12,7 @@ const sqlCon = mysql.createConnection({
 });
 server.listen(3000);
 
+
 var playerSpawnPoints = [];
 var clients = [];
 var lobby = [];
@@ -48,12 +49,12 @@ io.on('connection', function(socket) {
 
         socket.on('new lobby host', data => {
             const lobbyId = data.lobby
-            const player = { lobby: lobbyId, name: data.name };
+            const player = { lobby: lobbyId, id: data.id, displayName: data.displayName };
             if (!Array.isArray(lobbies[lobbyId])) {
                 lobbies[lobbyId] = [];
             }
             lobbies[lobbyId].push(player);
-            hosts.push(lobbyId);
+            hosts.push(player);
             socket.broadcast.emit('new host', data);
             socket.join(lobbyId);
         })
@@ -66,25 +67,25 @@ io.on('connection', function(socket) {
             if (!lobbies[lobbyId]) {
                 lobbies[lobbyId] = []; // Ensure the lobby array exists
             }
-            const player = { lobby: lobbyId, name: data.name };
+            const player = { lobby: lobbyId, id: data.id, displayName: data.displayName };
             socket.emit('others in lobby', lobbies[lobbyId]);
             lobbies[lobbyId].push(player);
             socket.join(lobbyId)
             socket.to(lobbyId).emit('other player in lobby', player);
+            console.log(`Player ${data.displayName} joined room ${lobbyId}`);
+            console.log(`Room ${lobbyId} now has:`, io.sockets.adapter.rooms.get(lobbyId));
         });
 
         socket.on('delete lobby', (data) => {
             let lobbyId = data.lobby;
             delete lobbies[lobbyId];
-            let index = hosts.indexOf(lobbyId);
+            let index = hosts.findIndex(host => host.lobby === lobbyId);
             if (index !== -1) {
                 hosts.splice(index, 1);
             }
-            console.log('delete lobby', lobbyId);
-            console.log('Current lobbies:', lobbies);
-            console.log('Current hosts:', hosts);
             socket.broadcast.emit('delete host lobby', lobbyId);
         })
+
 
         socket.on('join lobby', data => {
             console.log('connect to lobby')
@@ -92,14 +93,14 @@ io.on('connection', function(socket) {
             if(lobby.length > 0) {
                 lobby.forEach((user) =>{
                     const lobbyPlayer = {
-                        name: user.name
+                        id: user.id
                     }
                     socket.emit('other player in lobby', lobbyPlayer)
                 })
             }else {
                 socket.emit("lobby host")
             }
-            let user = { name: data.name}
+            let user = { id: data.id}
             lobby.push(user);
             socket.broadcast.emit('other player in lobby', user)
         })
@@ -127,7 +128,7 @@ io.on('connection', function(socket) {
                 let randomSpawnPoint = playerSpawnPoints[i]; // Now randomized
                 let lobPla = lobbies[lobbyId][i];
                 let play = {
-                    name: lobPla.name,
+                    id: lobPla.id,
                     position: randomSpawnPoint.position,
                     rotation: randomSpawnPoint.rotation,
                     movement: 0,
@@ -136,9 +137,9 @@ io.on('connection', function(socket) {
                 console.log(play)
             }
             console.log(ReadyToPlayers)
-            socket.emit('play', ReadyToPlayers)
+            //socket.emit('play', ReadyToPlayers)
             //socket.broadcast.emit('play', ReadyToPlayers)
-            socket.to(data.lobby).emit('play', ReadyToPlayers)
+            io.to(data.lobby).emit('play', ReadyToPlayers)
         });
 
         socket.on('add scores', data =>{
@@ -249,7 +250,10 @@ io.on('connection', function(socket) {
         })
         socket.on('started seeking' ,function(data){
             const lobbyId = data.lobby
-            socket.to(lobbyId).emit('started seeking')
+            console.log('started seeking in the Game '+ data.lobby +  ' and his name is '+ data.displayName  )
+            console.log(`Player ${data.displayName} joined room ${lobbyId}`);
+            console.log(`Room ${lobbyId} now has:`, io.sockets.adapter.rooms.get(lobbyId));
+            io.to(lobbyId).emit('started seeking')
         })
 
         socket.on('has been found', function (data){
@@ -267,13 +271,10 @@ io.on('connection', function(socket) {
         })
 
         socket.on('player move', function (data) {
-            //console.log('received: move: ' + JSON.stringify(data));
+            //console.log('received: move: ' + JSON.strikngify(data));
             const lobbyId = data.lobby
-            currentPlayer.name = data.name;
-            currentPlayer.movement = data.movement;
-            currentPlayer.rotation = data.rotation;
-            currentPlayer.position = data.position;
-            socket.to(lobbyId).emit('player move', currentPlayer);
+            const player = {id : data.id, displayName : data.displayName, position : data.position, movement : data.movement, rotation : data.rotation, lobby : data.lobby};
+            io.to(lobbyId).emit('player move', player);
             //socket.broadcast.emit('player move', currentPlayer);
         });
 
@@ -284,16 +285,71 @@ io.on('connection', function(socket) {
 
 
         socket.on('disconnect', function () {
-            console.log(`new disconnection socket: ${socket.id}`);
-            socket.broadcast.emit('other player disconnected', currentPlayer);
-            console.log(currentPlayer.name + ' broadcast: other player disconnected ' + JSON.stringify(currentPlayer));
-            //for loop to modify the data structure of clients
-            for (let i = 0; i < clients.length; i++) {
-                if (clients[i].name === currentPlayer.name) {
-                    clients.splice(i, 1);
+        console.log(`Player disconnected: ${socket.id}`);
+
+        // 1. Check if this was a host disconnecting
+        for (const lobbyId in lobbies) {
+            const lobbyPlayers = lobbies[lobbyId];
+            const hostPlayer = lobbyPlayers.find(p => p.id === socket.id && p.lobby === lobbyId);
+
+            if (hostPlayer) {
+                console.log(`Host ${hostPlayer.displayName} disconnected from lobby ${lobbyId}`);
+                io.to(lobbyId).emit('lobby closed');
+                io.sockets.in(lobbyId).socketsLeave(lobbyId);
+                delete lobbies[lobbyId];
+                const hostIndex = hosts.findIndex(h => h.id === socket.id);
+                if (hostIndex !== -1) {
+                    hosts.splice(hostIndex, 1);
                 }
+                io.emit('delete host lobby', lobbyId);
+                if (currentPlayer && currentPlayer.id === socket.id) {
+                    currentPlayer = {};
+                }
+                return;
             }
-        });
+        }
+        // 2. Check if this was a regular player disconnecting
+        for (const lobbyId in lobbies) {
+            const lobbyPlayers = lobbies[lobbyId];
+            const playerIndex = lobbyPlayers.findIndex(p => p.id === socket.id);
+
+            if (playerIndex !== -1) {
+                const disconnectedPlayer = lobbyPlayers[playerIndex];
+                console.log(`Player ${disconnectedPlayer.displayName} disconnected from lobby ${lobbyId}`);
+
+                // Remove player from lobby
+                lobbyPlayers.splice(playerIndex, 1);
+
+                // Notify other players in the lobby
+                socket.to(lobbyId).emit('other player disconnected', {
+                    id: disconnectedPlayer.id,
+                    name: disconnectedPlayer.displayName,
+                    position: [0, 0, 0], // Default position
+                    rotation: [0, 0, 0]  // Default rotation
+                });
+
+                // If lobby is now empty, clean it up
+                if (lobbyPlayers.length === 0) {
+                    console.log(`Lobby ${lobbyId} is now empty, removing`);
+                    delete lobbies[lobbyId];
+
+                    // Remove from hosts list if it was there
+                    const hostIndex = hosts.findIndex(h => h.lobby === lobbyId);
+                    if (hostIndex !== -1) {
+                        hosts.splice(hostIndex, 1);
+                    }
+
+                    io.emit('delete host lobby', lobbyId);
+                }
+
+                // Clean up currentPlayer reference if needed
+                if (currentPlayer && currentPlayer.id === socket.id) {
+                    currentPlayer = {};
+                }
+
+                break;
+        }
+    }});
     });
 
 console.log('----Server is Running----');

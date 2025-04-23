@@ -6,6 +6,7 @@ public class RankingEntryModifier : MonoBehaviour
     [SerializeField] private TextMeshProUGUI rank;
     [SerializeField] private TextMeshProUGUI username;
     [SerializeField] private TextMeshProUGUI score;
+    [SerializeField] private string id;
     
     private NetworkManager _networkManager;
     public void AddValues(string ra, string na, string sc)
@@ -15,15 +16,16 @@ public class RankingEntryModifier : MonoBehaviour
         score.text = sc;
     }
 
-    public void AddValues(string na)
+    public void AddValues(string name, string i)
     {
-        username.text = na;
+        username.text = name;
+        id = i;
     }
     
     public void LobbyChosen()
     {
         GetNetworkManager();
-        _networkManager.LobbyChosen(username.text);
+        _networkManager.LobbyChosen(id);
     }
     private void GetNetworkManager()
     {

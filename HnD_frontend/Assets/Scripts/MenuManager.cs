@@ -269,25 +269,25 @@ public class MenuManager : MonoBehaviour
       }
    }
 
-   public void AddToHostsLobby(string host)
+   public void AddToHostsLobby(string host, string id)
    {
-      if (_hostLobbyEntries.ContainsKey(host)) return;
+      if (_hostLobbyEntries.ContainsKey(id)) return;
       Debug.Log("Adding this to the Host lobby  " + host);
       GameObject lobbyHost = Instantiate(lobbyHostEntryTemplate, lobbyHostContentContainer, false);
       RankingEntryModifier rankEnt = lobbyHost.GetComponent<RankingEntryModifier>();
-      rankEnt.AddValues(host);
+      rankEnt.AddValues(host, id);
       lobbyHost.gameObject.SetActive(true);
-      _hostLobbyEntries.Add(host, lobbyHost);
+      _hostLobbyEntries.Add(id, lobbyHost);
    }
-   public void AddToLobby(string player)
+   public void AddToLobby(string name, string id)
    {
-      if (_lobbyEntries.ContainsKey(player)) return; 
+      if (_lobbyEntries.ContainsKey(name)) return; 
       GameObject entry = Instantiate(lobbyEntryTemplate, lobbyContentContainer, false);
-      Debug.Log("Added the user to the lobby : "+ player + "    *************");
+      Debug.Log("Added the user to the lobby : "+ name + "    *************");
       RankingEntryModifier rankEnt = entry.GetComponent<RankingEntryModifier>();
-      rankEnt.AddValues(player);
+      rankEnt.AddValues(name, id);
       entry.gameObject.SetActive(true);
-      _lobbyEntries.Add(player, entry);
+      _lobbyEntries.Add(id, entry);
    }
 
    public void SendMessageToDeleteHost()
@@ -327,7 +327,7 @@ public class MenuManager : MonoBehaviour
    public void DeleteAllFromLobby()
    {
       List<string> playersToRemove = new List<string>(_lobbyEntries.Keys);
-      // Debug.Log("players to remove "+playersToRemove.Count);
+      // Debug.Log(  "players to remove "+playersToRemove.Count);
       foreach (var entry in playersToRemove)
       {
          DeleteUserFromLobby(entry);

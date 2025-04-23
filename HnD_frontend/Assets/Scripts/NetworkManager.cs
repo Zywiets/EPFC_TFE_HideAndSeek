@@ -5,6 +5,7 @@ using Cinemachine;
 using Firesplash.UnityAssets.SocketIO;
 using Newtonsoft.Json;
 using UnityEngine;
+using UnityEngine.Serialization;
 using Random = System.Random;
 
 public class NetworkManager : MonoBehaviour
@@ -77,7 +78,7 @@ public class NetworkManager : MonoBehaviour
     public void JoinGame()
     {
         Shuffle(playerSpawnPoints);
-        PlayerJson playAndSpawns = new PlayerJson(_currentUser.name, playerSpawnPoints, _currentUser.lobby);
+        UserJson playAndSpawns = new UserJson(_currentUser.id, playerSpawnPoints, _currentUser.lobby);
         string data = JsonUtility.ToJson(playAndSpawns);
         _sioCom.Instance.Emit("play", data, false);
     }
@@ -101,7 +102,7 @@ public class NetworkManager : MonoBehaviour
     public void JoinLobby()
     {
         // this is where the player communicates <ith the backend for the lobby logic
-        PlayerJson player = new PlayerJson(_currentUser.name);
+        UserJson player = new UserJson(_currentUser.id);
         string data = JsonUtility.ToJson(player);
         _sioCom.Instance.Emit("join lobby", data, false);
     }
@@ -116,10 +117,10 @@ public class NetworkManager : MonoBehaviour
     }
     public void BecomeLobbyHost()
     {
-        _currentUser.lobby = _currentUser.name;
+        _currentUser.lobby = _currentUser.id;
         string data = JsonUtility.ToJson(_currentUser);
         _sioCom.Instance.Emit("new lobby host", data, false);
-        _menuManagerComponent.AddToLobby(_currentUser.name);
+        _menuManagerComponent.AddToLobby(_currentUser.displayName, _currentUser.id);
     }
     public void GetLobbies()
     {
@@ -159,6 +160,7 @@ public class NetworkManager : MonoBehaviour
     public void StartSeekingTimers()
     {
         string data = JsonUtility.ToJson(_currentUser);
+        Debug.Log(" the info sent to the other for the release " + _currentUser);
         _sioCom.Instance.Emit("started seeking", data, false);
         if (_isLobbyHost)
         {
@@ -208,7 +210,7 @@ public class NetworkManager : MonoBehaviour
     private void SendScoreToPlayers()
     {
         int sc = Mathf.RoundToInt(_totalTimeSpentHiding) * 10;
-        ScoreJson finalScore = new ScoreJson(_currentUser.name, sc, _userId);
+        ScoreJson finalScore = new ScoreJson(_currentUser.id, sc, _userId);
         string data = JsonUtility.ToJson(finalScore);
         _sioCom.Instance.Emit("final score", data, false);
         AddValueToEndScoreTable(finalScore);
@@ -238,15 +240,15 @@ public class NetworkManager : MonoBehaviour
     {
         UserJson host = JsonUtility.FromJson<UserJson>(data);
         //Debug.Log("new host added to lobby ====   " + host.name);
-        _menuManagerComponent.AddToHostsLobby(host.lobby);
+        _menuManagerComponent.AddToHostsLobby(host.displayName,host.lobby);
     }
     void OnHostsLobbyList(string data)
     {
-        var hostsList = JsonHelper.FromJson<string>(data);
+        var hostsList = JsonHelper.FromJson<UserJson>(data);
         foreach (var host in hostsList)
         {
             //Debug.Log(host);
-            _menuManagerComponent.AddToHostsLobby(host);
+            _menuManagerComponent.AddToHostsLobby(host.displayName, host.id);
         }
     }
 
@@ -263,17 +265,17 @@ public class NetworkManager : MonoBehaviour
         //Debug.Log(othLobbyList.Length + "\n the lenght of the lobby");
         foreach (var users in othLobbyList)
         {
-            _menuManagerComponent.AddToLobby(users.name);
+            _menuManagerComponent.AddToLobby(users.displayName,users.id);
         }
-        _menuManagerComponent.AddToLobby(_currentUser.name);
+        _menuManagerComponent.AddToLobby(_currentUser.displayName,_currentUser.id);
     }
     void OnOtherPlayerInLobby(string data)
     {
         if (!_isSignedIn) return;
         // Debug.Log("other player in lobby : "+ data);
         UserJson lobbyPlayer = UserJson.CreateFromJSON(data);
-        if (lobbyPlayer.name.Equals(_currentUser.name)) return;
-        _menuManagerComponent.AddToLobby(lobbyPlayer.name);
+        if (lobbyPlayer.id.Equals(_currentUser.id)) return;
+        _menuManagerComponent.AddToLobby(lobbyPlayer.displayName,lobbyPlayer.id);
     }
     void OnSignIn(string data)
     {
@@ -387,15 +389,15 @@ public class NetworkManager : MonoBehaviour
         for(int i = 0; i < _playersPlayingList.Count; ++i)
         {
             UserJson plyrs = _playersPlayingList[i];
-            Debug.Log("le player est dans la _playerPlayinglist : "+plyrs.name);
-            if (!_playersGameObjectDict.ContainsKey(plyrs.name))
+            Debug.Log("le player est dans la _playerPlayinglist : "+plyrs.id);
+            if (!_playersGameObjectDict.ContainsKey(plyrs.id))
             {
                 Vector3 position = new Vector3(plyrs.position[0], plyrs.position[1], plyrs.position[2]);
                 Quaternion rotation = Quaternion.Euler(0,0,0);
-                _playerGameObject = Instantiate(plyrs.name.Equals(_currentUser.name) ? localplayerGameObject : nonLocalPlayerGameObject, i == _roundCompt ? _waitingPosition : position, rotation);
-                _playerGameObject.name = plyrs.name;
+                _playerGameObject = Instantiate(plyrs.id.Equals(_currentUser.id) ? localplayerGameObject : nonLocalPlayerGameObject, i == _roundCompt ? _waitingPosition : position, rotation);
+                _playerGameObject.name = plyrs.id;
                 _playersGameObjectDict.Add(_playerGameObject.name, _playerGameObject);
-                if (plyrs.name.Equals(_currentUser.name))
+                if (plyrs.id.Equals(_currentUser.id))
                 {
                     _localPlayerRoleComp = _playerGameObject.GetComponent<PlayerRole>();
                     _localPlayerInGameMenuManager = _playerGameObject.GetComponentInChildren<InGameMenuManager>();
@@ -405,7 +407,7 @@ public class NetworkManager : MonoBehaviour
                 }
                 if (i == _roundCompt)
                 {
-                    SetSeekerInNewGame(plyrs.name);
+                    SetSeekerInNewGame(plyrs.id);
                 }
             }
         }
@@ -428,15 +430,15 @@ public class NetworkManager : MonoBehaviour
             
             Vector3 position = new Vector3(userJson.position[0], userJson.position[1], userJson.position[2]);
             Quaternion rotation = Quaternion.Euler(0,0,0);
-            GameObject o = GameObject.Find(userJson.name);
+            GameObject o = GameObject.Find(userJson.id);
             if (o != null)
             {
-                Debug.Log("couldn't instantiate the player "+userJson.name);
+                Debug.Log("couldn't instantiate the player "+userJson.id);
                 return;
             }
             print("someone managed to instantiate");
             GameObject p = Instantiate(nonLocalPlayerGameObject, position, rotation);
-            p.name = userJson.name;
+            p.name = userJson.id;
             _playersGameObjectDict.Add(p.name, p);
         }
 
@@ -466,10 +468,12 @@ public class NetworkManager : MonoBehaviour
 
     void OnSeekerReleased(string data)
     {
+        Debug.Log("The seeker is being released 111111111111");
         if (_isLobbyHost)
         {
             _localPlayerInGameMenuManager._isRoundTimerOn = true;
         }
+        Debug.Log("The seeker is being released 222222222");
         _localPlayerInGameMenuManager.SetHidingTimer();
         _waitingZone.SetActive(false);
     }
@@ -494,32 +498,30 @@ public class NetworkManager : MonoBehaviour
     void OnOtherPlayerDisconnected(string data)
     {
         UserJson userJson = UserJson.CreateFromJSON(data);
-        Destroy(GameObject.Find(userJson.name));
-        _playersGameObjectDict.Remove(userJson.name);
-        _menuManagerComponent.DeleteUserFromLobby(userJson.name);
+        Destroy(GameObject.Find(userJson.id));
+        _playersGameObjectDict.Remove(userJson.id);
+        _menuManagerComponent.DeleteUserFromLobby(userJson.id);
     }
 
 
     void OnPlayerMove(string data)
     {
-        //Debug.Log("+++++++ OnplayerMove +++"+ data);
         UserJson userJson = UserJson.CreateFromJSON(data);
-        if (userJson.name.Equals(_currentUser.name))
+        if (userJson.id.Equals(_currentUser.id))
         {
             return;
         }
         Vector2 movement = new Vector2(userJson.movement[0], userJson.movement[1]);
         Quaternion rotation = Quaternion.Euler(userJson.rotation[0],userJson.rotation[1],userJson.rotation[2]);
         Vector3 position = new Vector3(userJson.position[0], userJson.position[1], userJson.position[2]);
-        // GameObject p = GameObject.Find(userJson.name);
-        if (_playersGameObjectDict.ContainsKey(userJson.name))
+        if (_playersGameObjectDict.ContainsKey(userJson.id))
         {
-            GameObject p = _playersGameObjectDict[userJson.name];
+            GameObject p = _playersGameObjectDict[userJson.id];
             if (p != null) {
                 ThirdPersonMovement thirdMove =  p.GetComponentInChildren<ThirdPersonMovement>(); 
                 thirdMove.HandleOtherPlayerMovement(movement, rotation, position);
             }else {
-                Debug.Log("--------- Couldn't find Player ( " + userJson.name+" ) to move");
+                Debug.Log("--------- Couldn't find Player ( " + userJson.id+" ) to move");
             }
         }
         
@@ -532,17 +534,17 @@ public class NetworkManager : MonoBehaviour
 
     void OnSetUserSocket(string data)
     {
-        _currentUser.name = data;
+        _currentUser.id = data;
     }
     void OnPlayerJump(string data)
     {
         Debug.Log("°°°°°° OnplayerJump °°°°°");
         UserJson userJson = UserJson.CreateFromJSON(data);
-        if (userJson.name.Equals(playerNameInput))
+        if (userJson.id.Equals(playerNameInput))
         {
             return;
         }
-        GameObject p = GameObject.Find(userJson.name);
+        GameObject p = GameObject.Find(userJson.id);
         if (p != null)
         {
             ThirdPersonMovement thirdMove =  p.GetComponentInChildren<ThirdPersonMovement>();
@@ -555,7 +557,7 @@ public class NetworkManager : MonoBehaviour
     private void SetSeekerInNewGame(string seekerName)
     {
         //Debug.Log("setting the seeker "+ seekerName);
-        if (seekerName.Equals(_currentUser.name))
+        if (seekerName.Equals(_currentUser.id))
         {
             _localPlayerRoleComp.SetSeekerMaterial();
             _localPlayerInGameMenuManager.SetWaitingTimer();
@@ -580,31 +582,6 @@ public class NetworkManager : MonoBehaviour
     }
 
     #region JSONMessageClasses
-    
-    [Serializable]
-    public class PlayerJson
-    {
-        public string name;
-        public List<PointJson> playerSpawnPoints;
-        public string lobby;
-
-        public PlayerJson(string _name, List<GameObject> _playerSpawnPoints, string _lobby)
-        {
-            playerSpawnPoints = new List<PointJson>();
-            name = _name;
-            lobby = _lobby;
-            foreach (GameObject playerSpawnPoint in _playerSpawnPoints)
-            {
-                PointJson pointJSON = new PointJson(playerSpawnPoint);
-                playerSpawnPoints.Add(pointJSON);
-            }
-        }
-
-        public PlayerJson(string na)
-        {
-            name = na;
-        }
-    }
 
     [Serializable]
     public class RankingJson
@@ -724,11 +701,25 @@ public class NetworkManager : MonoBehaviour
     [Serializable]
     public class UserJson
     {
-        public string name;
+        public string id;
+        public string displayName;
         public float[] position;
         public float[] rotation;
         public float[] movement;
+        public List<PointJson> playerSpawnPoints;
         public string lobby;
+
+        public UserJson(string _id, List<GameObject> _playerSpawnPoints, string _lobby)
+        {
+            playerSpawnPoints = new List<PointJson>();
+            id = _id;
+            lobby = _lobby;
+            foreach (GameObject playerSpawnPoint in _playerSpawnPoints)
+            {
+                PointJson pointJSON = new PointJson(playerSpawnPoint);
+                playerSpawnPoints.Add(pointJSON);
+            }
+        }
 
         public static UserJson CreateFromJSON(string data)
         {
@@ -737,7 +728,7 @@ public class NetworkManager : MonoBehaviour
 
         public UserJson(string n)
         {
-            name = n;
+            displayName = n;
         }
     }
 
