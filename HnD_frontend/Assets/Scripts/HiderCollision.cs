@@ -9,10 +9,9 @@ public class HiderCollision : MonoBehaviour
 
     private void OnCollisionEnter(Collision collision)
     {
-        Debug.Log("Collision detected in COLLIDER");
+        Debug.Log(SeekerName);
         if (collision.gameObject.CompareTag(SeekerName) && !gameObject.CompareTag(SeekerName))
         {
-            Debug.Log("Contact avec un objet dans le COLLIDER: " + collision.gameObject.tag);
             _inGameMenu.OnCollisionWithSeeker();
         }
     }

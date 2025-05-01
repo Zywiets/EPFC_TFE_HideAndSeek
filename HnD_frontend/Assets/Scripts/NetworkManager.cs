@@ -377,6 +377,7 @@ public class NetworkManager : MonoBehaviour {
     }
 
     private void OnSeekingStarted(string _) {
+        _localPlayerInGameMenuManager._isHiding = true;
         _localPlayerInGameMenuManager._isRoundTimerOn = true;
         _localPlayerInGameMenuManager._hidingPanel.SetActive(true);
         _waitingZone.SetActive(false);
