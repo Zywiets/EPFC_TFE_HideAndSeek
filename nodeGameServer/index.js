@@ -12,344 +12,208 @@ const sqlCon = mysql.createConnection({
 });
 server.listen(3000);
 
-
-var playerSpawnPoints = [];
-var clients = [];
-var lobby = [];
-var lobbies = {};
-let hosts = [];
-var hsPlayers = [];
+var lobbies = [];
 
 
-app.get('/', function(req, res){
+app.get('/', function (req, res) {
     res.send("Server is running!");
 });
 
-io.on('connection', function(socket) {
+io.on('connection', function (socket) {
     console.log(`New connection: ${socket.id}`);
-    let currentPlayer = {};
 
-        socket.on('player connect', () => {
-            console.log('Player connected:', socket.id);
-            if(clients.length > 0) {
-                clients.forEach((client) => {
-                    const playerConnected = {
-                        name: client.name,
-                        position: client.position,
-                        rotation: client.rotation
-                    };
-                    socket.emit('other player connected', playerConnected);
-                });
-            }
-        });
+    socket.on('createLobby', user => {
+        console.log("new lobby host", user)
+        const lobby = {name: user.username, id: user.socketId, users: [user]}
+        lobbies.push(lobby)
+        io.emit('lobbyCreated', lobby)
+        console.log("createLobby", lobby)
+        socket.emit('lobbyJoined', lobby)
+        socket.join(lobby.id)
+    })
 
-        socket.on('get lobbies', data => {
-            socket.emit('hosts data', hosts);
-        })
-
-        socket.on('new lobby host', data => {
-            const lobbyId = data.lobby
-            const player = { lobby: lobbyId, id: data.id, displayName: data.displayName };
-            if (!Array.isArray(lobbies[lobbyId])) {
-                lobbies[lobbyId] = [];
-            }
-            lobbies[lobbyId].push(player);
-            hosts.push(player);
-            socket.broadcast.emit('new host', data);
-            socket.join(lobbyId);
-        })
-
-        socket.on('lobby chosen', (data) => {
-            let lobbyId = data.lobby;
-            if (!lobbyId) {
-                return;
-            }
-            if (!lobbies[lobbyId]) {
-                lobbies[lobbyId] = []; // Ensure the lobby array exists
-            }
-            const player = { lobby: lobbyId, id: data.id, displayName: data.displayName };
-            socket.emit('others in lobby', lobbies[lobbyId]);
-            lobbies[lobbyId].push(player);
-            socket.join(lobbyId)
-            socket.to(lobbyId).emit('other player in lobby', player);
-            console.log(`Player ${data.displayName} joined room ${lobbyId}`);
-            console.log(`Room ${lobbyId} now has:`, io.sockets.adapter.rooms.get(lobbyId));
-        });
-
-        socket.on('delete lobby', (data) => {
-            let lobbyId = data.lobby;
-            delete lobbies[lobbyId];
-            let index = hosts.findIndex(host => host.lobby === lobbyId);
-            if (index !== -1) {
-                hosts.splice(index, 1);
-            }
-            socket.broadcast.emit('delete host lobby', lobbyId);
-        })
-
-
-        socket.on('join lobby', data => {
-            console.log('connect to lobby')
-
-            if(lobby.length > 0) {
-                lobby.forEach((user) =>{
-                    const lobbyPlayer = {
-                        id: user.id
-                    }
-                    socket.emit('other player in lobby', lobbyPlayer)
-                })
-            }else {
-                socket.emit("lobby host")
-            }
-            let user = { id: data.id}
-            lobby.push(user);
-            socket.broadcast.emit('other player in lobby', user)
-        })
-
-        socket.on('create lobby', data => {
-            console.log('create lobby');
-            // create the new room and add the user
-            socket.join(data)
-        })
-
-
-        socket.on('play', data => {
-            console.log('Player started playing: ', socket.id);
-            const lobbyId = data.lobby
-            playerSpawnPoints = [];
-            data.playerSpawnPoints.forEach(function (_playerSpawnPoint) {
-                let playerSpawnPoint = {
-                    position: _playerSpawnPoint.position,
-                    rotation: _playerSpawnPoint.rotation
-                };
-                playerSpawnPoints.push(playerSpawnPoint);
-            });
-            let ReadyToPlayers = [];
-            for (let i = 0; i < lobbies[lobbyId].length; i++) {
-                let randomSpawnPoint = playerSpawnPoints[i]; // Now randomized
-                let lobPla = lobbies[lobbyId][i];
-                let play = {
-                    id: lobPla.id,
-                    position: randomSpawnPoint.position,
-                    rotation: randomSpawnPoint.rotation,
-                    movement: 0,
-                };
-                ReadyToPlayers.push(play);
-                console.log(play)
-            }
-            console.log(ReadyToPlayers)
-            //socket.emit('play', ReadyToPlayers)
-            //socket.broadcast.emit('play', ReadyToPlayers)
-            io.to(data.lobby).emit('play', ReadyToPlayers)
-        });
-
-        socket.on('add scores', data =>{
-            const highestScore = Math.max(...data.map(player => player.score));
-            const winners = data.filter(player => player.score === highestScore).map(player => player.id);
-            let gameId = ""
-            sqlCon.query('INSERT INTO games (game_date) VALUES (NOW())', function(err, result, fields){
-                if (err) throw err;
-                gameId = result.insertId;
-                console.log('le gameId est '+gameId)
-                for (const player of data) {
-                    const userId = player.id;
-                    const score = player.score;
-                    sqlCon.query('INSERT INTO score (user_id, game_id, points) VALUES (?, ?, ?)', [userId, gameId, score]);
-                }
-
-                for (const winnerId of winners) {
-                    sqlCon.query('UPDATE score SET is_winner = TRUE WHERE game_id = ? AND user_id = ?', [gameId, winnerId]);
-                }
-            });
-        })
-
-        socket.on('end lobby', data => {
-            const lobbyId = data.lobby;
-            socket.leave(lobbyId);
-        })
-
-        socket.on('test', data =>{
-            sqlCon.query("SELECT * FROM users", function(err, result, fields){
-                if (err) throw err;
-                result.forEach(row => {
-                    hsPlayers.push(row);
-                })
-                const testResponse = {
-                    users: hsPlayers
-                };
-                socket.emit('test', testResponse);
-            });
-        });
-
-        socket.on('sign in', data => {
-            console.log('Player trying to sign in: ',data);
-            sqlCon.query("SELECT users.password FROM users WHERE username = ?", [data.username], function(err, res, fields){
-               if(err) throw err;
-               const hashPass = data.password;
-               if(res[0].password === hashPass){
-                   socket.emit('sign in', true)
-                   sqlCon.query("SELECT user_id FROM users WHERE username = ?", [data.username], function(err, resu, fields){
-                       if(err) throw err
-                       const userId = resu[0].user_id;
-                       socket.emit('user_id', userId)
-                       socket.emit('user_socket', socket.id);
-                   })
-               }else{
-                   socket.emit('sign in', false)
-               }
-
-            });
-        });
-
-        socket.on('sign up', data => {
-            console.log("On passe dans le sign up 1")
-            sqlCon.query("SELECT COUNT(*) as total FROM users WHERE username = ? OR ?",[data.username, data.email], function(err, result, fields){
-                if(err) throw err;
-                let tot = parseInt(result[0].total);
-                if(tot > 0 ) {
-                    socket.emit('sign in', false);
-                }else{
-                    console.log("On passe dans le sign up 2")
-                    const newUser = {
-                        username : data.username,
-                        email : data.email,
-                        password : data.password
-                    }
-                    sqlCon.query("INSERT INTO `users` SET ?", newUser, function(err, result, fields){
-                        if(err) throw err;
-                        if (result && result.affectedRows > 0) {
-                            socket.emit("sign up", true)
-                            console.log('Query executed successfully. Affected rows:', result.affectedRows);
-                        } else {
-                            socket.emit("sign up" , false)
-                            console.log('Query executed but did not affect any rows.');
-                        }
-                        //socket.emit('sign up', result);
-                    })
-                }
-            })
-        })
-
-        socket.on('rankings', data => {
-            sqlCon.query("SELECT u.user_id, u.username, COALESCE(SUM(s.points), 0) AS total_score FROM users u LEFT JOIN  score s ON u.user_id = s.user_id GROUP BY  u.user_id ORDER BY total_score DESC", function(err, result, fields){
-                if(err) throw err;
-                let userRankings= []
-                result.forEach(function(data) {
-                    let userRank = {
-                        username : data.username,
-                        totalScore : data.total_score
-                    }
-                    userRankings.push(userRank);
-                })
-                socket.emit('rankings', userRankings)
-            })
-        })
-
-        socket.on('first seeker', function(data){
-            console.log('The first seeker is being set : '+ data)
-            socket.broadcast.emit('first seeker')
-        })
-        socket.on('started seeking' ,function(data){
-            const lobbyId = data.lobby
-            console.log('started seeking in the Game '+ data.lobby +  ' and his name is '+ data.displayName  )
-            console.log(`Player ${data.displayName} joined room ${lobbyId}`);
-            console.log(`Room ${lobbyId} now has:`, io.sockets.adapter.rooms.get(lobbyId));
-            io.to(lobbyId).emit('started seeking')
-        })
-
-        socket.on('has been found', function (data){
-            const lobbyId = data.lobby
-            socket.to(lobbyId).emit('player found', data)
-        })
-        socket.on('round timer over', function(data){
-            socket.broadcast.emit('round over')
-        })
-        socket.on('final score', function(data){
-            let finalScore  = { name : data.name,
-            score : data.score}
-            console.log('le score broadcast est '+data.name+' '+data.score)
-            socket.broadcast.emit('player score', data)
-        })
-
-        socket.on('player move', function (data) {
-            //console.log('received: move: ' + JSON.strikngify(data));
-            const lobbyId = data.lobby
-            const player = {id : data.id, displayName : data.displayName, position : data.position, movement : data.movement, rotation : data.rotation, lobby : data.lobby};
-            io.to(lobbyId).emit('player move', player);
-            //socket.broadcast.emit('player move', currentPlayer);
-        });
-
-        socket.on('player jump', function(data) {
-           socket.broadcast.emit('player jump', data);
-        });
-
-
-
-        socket.on('disconnect', function () {
-        console.log(`Player disconnected: ${socket.id}`);
-
-        // 1. Check if this was a host disconnecting
-        for (const lobbyId in lobbies) {
-            const lobbyPlayers = lobbies[lobbyId];
-            const hostPlayer = lobbyPlayers.find(p => p.id === socket.id && p.lobby === lobbyId);
-
-            if (hostPlayer) {
-                console.log(`Host ${hostPlayer.displayName} disconnected from lobby ${lobbyId}`);
-                io.to(lobbyId).emit('lobby closed');
-                io.sockets.in(lobbyId).socketsLeave(lobbyId);
-                delete lobbies[lobbyId];
-                const hostIndex = hosts.findIndex(h => h.id === socket.id);
-                if (hostIndex !== -1) {
-                    hosts.splice(hostIndex, 1);
-                }
-                io.emit('delete host lobby', lobbyId);
-                if (currentPlayer && currentPlayer.id === socket.id) {
-                    currentPlayer = {};
-                }
-                return;
-            }
+    socket.on('joinLobby', (data) => {
+        console.log("lobby chosen", data);
+        let lobbyId = data.lobbyId;
+        if (!lobbyId) {
+            return;
         }
-        // 2. Check if this was a regular player disconnecting
-        for (const lobbyId in lobbies) {
-            const lobbyPlayers = lobbies[lobbyId];
-            const playerIndex = lobbyPlayers.findIndex(p => p.id === socket.id);
-
-            if (playerIndex !== -1) {
-                const disconnectedPlayer = lobbyPlayers[playerIndex];
-                console.log(`Player ${disconnectedPlayer.displayName} disconnected from lobby ${lobbyId}`);
-
-                // Remove player from lobby
-                lobbyPlayers.splice(playerIndex, 1);
-
-                // Notify other players in the lobby
-                socket.to(lobbyId).emit('other player disconnected', {
-                    id: disconnectedPlayer.id,
-                    name: disconnectedPlayer.displayName,
-                    position: [0, 0, 0], // Default position
-                    rotation: [0, 0, 0]  // Default rotation
-                });
-
-                // If lobby is now empty, clean it up
-                if (lobbyPlayers.length === 0) {
-                    console.log(`Lobby ${lobbyId} is now empty, removing`);
-                    delete lobbies[lobbyId];
-
-                    // Remove from hosts list if it was there
-                    const hostIndex = hosts.findIndex(h => h.lobby === lobbyId);
-                    if (hostIndex !== -1) {
-                        hosts.splice(hostIndex, 1);
-                    }
-
-                    io.emit('delete host lobby', lobbyId);
-                }
-
-                // Clean up currentPlayer reference if needed
-                if (currentPlayer && currentPlayer.id === socket.id) {
-                    currentPlayer = {};
-                }
-
-                break;
+        if (!lobbies[lobbyId]) {
+            lobbies[lobbyId] = []; // Ensure the lobby array exists
         }
-    }});
+        const l = lobbies.find((lobby) => lobby.id === lobbyId);
+        l.users.push(data);
+        socket.join(lobbyId)
+        io.to(lobbyId).emit('lobbyJoined', l);
     });
+
+    socket.on('lobbyDelete', (user) => {
+        console.log("delete lobby", user);
+        lobbies = lobbies.filter((lobby) => lobby.id !== user.lobbyId);
+        io.emit('lobbyDeleted', user.lobbyId);
+    })
+
+
+    socket.on('start', lobby => {
+        console.log('Player started playing: ', lobby);
+        for (let user of lobby.users) {
+            user.point = lobby.spawnPoints.pop()
+            console.log(user.point)
+        }
+        io.to(lobby.id).emit('roundStarted', lobby)
+    });
+
+    socket.on('saveScores', scores => {
+        console.log("add scores", scores);
+        const highestScore = Math.max(...scores.map(score => score.total));
+        const winnerIds = scores.filter(score => score.total === highestScore).map(score => score.userId);
+        let gameId = ""
+        sqlCon.query('INSERT INTO games (game_date) VALUES (NOW())', function (err, result, fields) {
+            if (err) throw err;
+            gameId = result.insertId;
+            for (const score of scores) {
+                const userId = score.userId;
+                const total = score.total;
+                sqlCon.query('INSERT INTO score (user_id, game_id, points) VALUES (?, ?, ?)', [userId, gameId, total]);
+            }
+
+            for (const winnerId of winnerIds) {
+                sqlCon.query('UPDATE score SET is_winner = TRUE WHERE game_id = ? AND user_id = ?', [gameId, winnerId]);
+            }
+        });
+    })
+
+    socket.on('gameEnd', data => {
+        console.log("gameEnded", data)
+        const lobbyId = data.lobbyId;
+        lobbies = lobbies.filter(lobby => lobby.id !== lobbyId);
+        io.to(lobbyId).emit('gameEnded');
+        io.in(lobbyId).socketsLeave(lobbyId);
+    })
+
+    // TODO: wrong username input triggers exception
+    socket.on('login', data => {
+        console.log('login: ', data);
+        sqlCon.query("SELECT users.password FROM users WHERE username = ?", [data.username], function (err, res, fields) {
+            if (err) throw err;
+            const hashPass = data.password;
+            if (res[0].password === hashPass) {
+                socket.emit('sign in', true)
+                sqlCon.query("SELECT user_id FROM users WHERE username = ?", [data.username], function (err, resu, fields) {
+                    if (err) throw err
+                    const userId = resu[0].user_id;
+                    socket.emit("loginSucceeded", {
+                        id: userId,
+                        socketId: socket.id,
+                    })
+                })
+            } else {
+                socket.emit('loginFailed')
+            }
+
+        });
+    });
+
+    socket.on('register', data => {
+        console.log("sign up", data)
+        sqlCon.query("SELECT COUNT(*) as total FROM users WHERE username = ? OR ?", [data.username, data.email], function (err, result, fields) {
+            if (err) throw err;
+            let tot = parseInt(result[0].total);
+            if (tot > 0) {
+                socket.emit('loginFailed');
+                return
+            }
+
+            var user = {
+                email: data.email,
+                username: data.username,
+                password: data.password,
+            }
+
+            sqlCon.query("INSERT INTO `users` SET ?", user, function (err, result, fields) {
+                if (err) throw err;
+                if (result && result.affectedRows > 0) {
+                    sqlCon.query("SELECT user_id FROM users WHERE username = ?", [data.username], function (err, result, fields) {
+                        socket.emit("registerSucceeded", {
+                            id: result[0].user_id,
+                            socketId: socket.id,
+                            username: data.username,
+                            email: data.email,
+                        })
+                    })
+                    return
+                }
+                socket.emit('registerFailed', result);
+            })
+        })
+    })
+
+    socket.on('rankings', data => {
+        console.log("rankings", data)
+        sqlCon.query("SELECT u.user_id, u.username, COALESCE(SUM(s.points), 0) AS total_score FROM users u LEFT JOIN  score s ON u.user_id = s.user_id GROUP BY  u.user_id ORDER BY total_score DESC", function (err, result, fields) {
+            if (err) throw err;
+            let userRankings = []
+            result.forEach(function (data) {
+                let userRank = {
+                    username: data.username,
+                    total: data.total_score
+                }
+                userRankings.push(userRank);
+            })
+            socket.emit('rankingsReceived', {rankings: userRankings})
+        })
+    })
+
+    socket.on('seekingStart', function (user) {
+        // console.log("started seeking", user);
+        io.to(user.lobbyId).emit('seekingStarted')
+    })
+
+    socket.on('userFound', function (user) {
+        console.log("has been found", user);
+        io.to(user.lobbyId).emit('userFound', user)
+    })
+
+    socket.on('gameEnd', function (data) {
+        console.log("gameEnd", data)
+        io.to(data.lobbyId).emit("game ended")
+    })
+
+    socket.on('scoreAdd', function (user) {
+        console.log("final score", user);
+        io.to(user.lobbyId).emit('scoreAdded', user)
+    })
+
+    socket.on('userMove', function (data) {
+        io.to(data.lobbyId).emit('userMoved', data);
+    });
+
+
+    socket.on('disconnect', function () {
+        console.log(`disconnect: ${socket.id}`);
+        const filtered_lobbies = lobbies.filter(lobby => {
+            return lobby.users.some(user => user.socketId === socket.id);
+        });
+
+        console.log("filtered_lobbies", filtered_lobbies);
+        console.log(filtered_lobbies.length)
+
+        if (filtered_lobbies.length !== 1) return
+        const lobby = filtered_lobbies[0];
+        const isLobbyHost = lobby.id === socket.id
+        lobby.users = lobby.users.filter(user => user.socketId !== socket.id);
+        io.to(lobby.id).emit('disconnected', {
+            lobby: lobby,
+            isLobbyHost: isLobbyHost,
+        });
+        console.log("lobby", lobby);
+        console.log("isLobbyHost", isLobbyHost)
+        if (isLobbyHost) {
+            lobbies = lobbies.filter(lobby => lobby.id !== socket.id);
+            console.log("host disconnected biatch")
+            io.emit('hostDisconnected', socket.id)
+        }
+    });
+});
 
 console.log('----Server is Running----');

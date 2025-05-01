@@ -21,13 +21,11 @@ public class HidingTimer : MonoBehaviour
         _isNotTouched = true;
     }
 
-    // Stop the timer
     private void StopTimer()
     {
         _isNotTouched = false;
     }
-
-    // Reset the timer
+    
     public void ResetTimer()
     {
         _startTime = Time.time;

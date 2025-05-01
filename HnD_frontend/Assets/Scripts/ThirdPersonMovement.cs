@@ -218,7 +218,9 @@ public class ThirdPersonMovement : MonoBehaviour
             }
             if(otherPlayer)
             {
-                Debug.Log("activating sound");audioSource.SetActive(inputMagnitude > 0.4);}
+                // Debug.Log("activating sound");audioSource.SetActive(inputMagnitude > 0.4);
+                
+            }
         }
         else
         {

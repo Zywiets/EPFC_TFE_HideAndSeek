@@ -25,7 +25,7 @@ public class RankingEntryModifier : MonoBehaviour
     public void LobbyChosen()
     {
         GetNetworkManager();
-        _networkManager.LobbyChosen(id);
+        _networkManager.joinLobby(id);
     }
     private void GetNetworkManager()
     {

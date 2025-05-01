@@ -16,7 +16,7 @@ public class InGameMenuManager : MonoBehaviour
     
     
     [SerializeField] private GameObject _waitingTimerPanel;
-    [SerializeField] private GameObject _hidingPanel;
+    [SerializeField] public GameObject _hidingPanel;
     [SerializeField] private GameObject _inBetweenRoundsPanel;
     
     
@@ -24,12 +24,16 @@ public class InGameMenuManager : MonoBehaviour
     private NetworkManager _networkManager;
     [SerializeField] private HiderCollision _hiderCollision;
     
+    private float waitingTimer;
+    private float hidingTimer;
 
     private void Start()
     {
         GetNetworkManager();
         _roundHostTimer = _timeLeftHiding;
         _networkManager.SetBeginTimer(_timeLeftHiding);
+        waitingTimer = _timeLeftWaiting;
+        hidingTimer = _timeLeftHiding;
     }
 
     private void Update()
@@ -42,7 +46,6 @@ public class InGameMenuManager : MonoBehaviour
         {
             RoundTimeManager();
         }
-
     }
 
     public void SetWaitingTimer()
@@ -50,12 +53,7 @@ public class InGameMenuManager : MonoBehaviour
         _waitingTimerPanel.SetActive(true);
         _isSeekerWaiting = true;
     }
-
-    public void SetHidingTimer()
-    {
-        _hidingPanel.SetActive(true);
-        _isHiding = true;
-    }
+    
     private void WaitingTimerManager()
     {
         if (_timeLeftWaiting > 0)
@@ -65,7 +63,7 @@ public class InGameMenuManager : MonoBehaviour
         }
         else
         {
-            _networkManager.StartSeekingTimers();
+            _networkManager.StartSeeking();
             _isSeekerWaiting = false;
             _waitingTimerPanel.SetActive(false);
         }
@@ -101,11 +99,10 @@ public class InGameMenuManager : MonoBehaviour
 
     public void OnCollisionWithSeeker()
     {
-        Debug.Log("on est dans le InGameMenuManager OnCollisionEnter");
         if (!_isHiding) return;
         _isHiding = false;
         _hidingPanel.SetActive(false);
-        _networkManager.HasBeenFound();
+        _networkManager.UserFound();
     }
 
     private void SetEndOfRound()
@@ -120,7 +117,6 @@ public class InGameMenuManager : MonoBehaviour
             _networkManager = networkManagerObject.GetComponent<NetworkManager>();
             if (_networkManager == null)
             {
-                Debug.Log("Le _networkManger est null dans le seekingWaitingTimer Component");
             }
         }
     }
@@ -138,5 +134,10 @@ public class InGameMenuManager : MonoBehaviour
         float seconds = Mathf.FloorToInt(currentTime % 60);
         _hidingTimer.text = $"{minutes:00} : {seconds:00}";
         _networkManager.SetTimeSpentHiding(currentTime);
+    }
+
+    public void ResetTimers() {
+        _timeLeftHiding = hidingTimer;
+        _timeLeftWaiting = waitingTimer;
     }
 }

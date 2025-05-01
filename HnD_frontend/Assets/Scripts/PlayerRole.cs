@@ -33,7 +33,6 @@ public class PlayerRole : MonoBehaviour
 
     public void SetSeekerMaterial()
     {
-        //Debug.Log("Setting ht e sekker skin");
         _rendererAvatar.material = _seekerMaterial;
         seekerAvatar.tag = SeekerName;
     }
