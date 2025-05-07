@@ -133,8 +133,9 @@ public class NetworkManager : MonoBehaviour {
 
     public void OnLobbiesReceived(string payload)
     {
-        WrapperLobbies wrapper = JsonUtility.FromJson<WrapperLobbies>(payload);
-        var lobbies = wrapper.lobbies;
+        var lobbies = JsonConvert.DeserializeObject<List<Lobby>>(payload);
+        //WrapperLobbies wrapper = JsonUtility.FromJson<WrapperLobbies>(payload);
+        //var lobbies = wrapper.lobbies;
         _menuManagerComponent.DeleteAllFromHostsLobby();
         foreach (var hostLobby in lobbies)
         {
