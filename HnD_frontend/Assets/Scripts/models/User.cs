@@ -11,7 +11,7 @@ public class Movement {
     }
 }
 
-[System.Serializable] // Add this attribute
+[System.Serializable] 
 public class User {
     public int id;
     public string username;

@@ -32,6 +32,9 @@ io.on('connection', function (socket) {
         socket.join(lobby.id)
     })
 
+    socket.on('getLobbies', function(){
+        socket.emit('lobbiesReceived',lobbies)
+    })
     socket.on('joinLobby', (data) => {
         console.log("lobby chosen", data);
         let lobbyId = data.lobbyId;

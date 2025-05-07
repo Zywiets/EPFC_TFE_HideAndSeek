@@ -13,7 +13,6 @@ public class SeekerWaitingTimer : MonoBehaviour
 
     private void Start()
     {
-        Debug.Log("salut bande de chacals !!!");
         _timerOn = true;
         GetNetworkManager();
     }

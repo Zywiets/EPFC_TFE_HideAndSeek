@@ -14,3 +14,9 @@ public class LobbyIsHost {
     public Lobby lobby;
     public bool isLobbyHost;
 }
+
+[Serializable]
+public class WrapperLobbies
+{
+    public List<Lobby> lobbies;
+}

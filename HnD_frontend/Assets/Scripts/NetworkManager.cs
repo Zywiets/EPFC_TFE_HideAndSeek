@@ -63,6 +63,7 @@ public class NetworkManager : MonoBehaviour {
         _sioCom.Instance.On("registerFailed", OnRegisterFailed);
         _sioCom.Instance.On("registerSucceeded", OnRegisterSucceeded);
         _sioCom.Instance.On("rankingsReceived", OnRankingsReceived);
+        _sioCom.Instance.On("lobbiesReceived", OnLobbiesReceived);
         _sioCom.Instance.On("lobbyCreated", OnLobbyCreated);
         _sioCom.Instance.On("lobbyJoined", OnLobbyJoined);
         _sioCom.Instance.On("roundStarted", OnRoundStarted);
@@ -130,7 +131,16 @@ public class NetworkManager : MonoBehaviour {
         _sioCom.Instance.Emit("getLobbies");
     }
 
-    public void OnLobbiesReceived(string payload) { }
+    public void OnLobbiesReceived(string payload)
+    {
+        WrapperLobbies wrapper = JsonUtility.FromJson<WrapperLobbies>(payload);
+        var lobbies = wrapper.lobbies;
+        _menuManagerComponent.DeleteAllFromHostsLobby();
+        foreach (var hostLobby in lobbies)
+        {
+            _menuManagerComponent.AddLobbyToHost(hostLobby.name, hostLobby.id);
+        }
+    }
 
     public void CreateLobby() {
         string payload = JsonUtility.ToJson(currentUser);
@@ -458,6 +468,7 @@ public class NetworkManager : MonoBehaviour {
             { "errorMessage", "Someone left the game" }
         });
         _sioCom.Instance.Emit("gameEnd", payload, false);
+        _menuManagerComponent.SetDisconnectErrorMessage(true);
     }
 
     private void OnHostDisconnected(string socketId) {

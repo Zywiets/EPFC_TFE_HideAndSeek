@@ -62,6 +62,8 @@ public class MenuManager : MonoBehaviour {
     [SerializeField] private GameObject endGameScoreTemplate;
     private Dictionary<int, string> _endGameScores = new Dictionary<int, string>();
 
+    [SerializeField] private GameObject disconnectErrorMessage;
+
     private NetworkManager _networkManager;
 
     private void Start() {
@@ -310,6 +312,13 @@ public class MenuManager : MonoBehaviour {
         _networkManager.LobbyDelete();
     }
 
+    public void DeleteAllFromHostsLobby() {        
+        var playersToRemove = new List<string>(_hostLobbyEntries.Keys);
+        foreach (var entry in playersToRemove) {
+            DeleteHostFromHostsLobby(entry);
+        }
+        _hostLobbyEntries.Clear();
+    } 
     public void DeleteHostFromHostsLobby(string host) {
         if (!_hostLobbyEntries.ContainsKey(host)) return;
         var entry = _hostLobbyEntries[host];
@@ -350,6 +359,11 @@ public class MenuManager : MonoBehaviour {
 
     public void GetRankingsFromDB() {
         _networkManager.GetRankings();
+    }
+
+    public void SetDisconnectErrorMessage(bool error)
+    {
+        disconnectErrorMessage.SetActive(error);
     }
 
     public void ClearSignUpForm() {
